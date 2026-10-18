@@ -42,7 +42,8 @@
 │  ├─ js/
 │  │  ├─ main.js             全ページ共通スクリプト
 │  │  └─ components/         共通パーツ（Web Component）
-│  │     └─ site-header.js   共通ヘッダの正本
+│  │     ├─ site-header.js   共通ヘッダの正本
+│  │     └─ site-footer.js   共通フッターの正本
 │  └─ img/                   画像（命名は kebab-case、例: hero-bg.png）
 ├─ dev/                      開発用（公開ページではない）
 │  └─ parts.html             共通パーツのプレビュー
@@ -160,6 +161,9 @@ block__element--modifier
 - カスタム要素の名前はハイフンを 1 つ以上含め、`x-` で始める（例: `x-site-header`）。
 - 初期化済みかどうかを `data-*` で持ち、同じ要素が再接続されても二重に組み立てない。
 - ヘッダーのナビ項目は `site-header.js` の `NAV_ITEMS` で管理する。ページを足したらここを直す。
+- フッターの SNS リンクは `site-footer.js` の `SOCIAL_LINKS` で管理する。
+  外部 URL は `http` から始まる文字列にすれば、`target="_blank"` と `rel="noopener noreferrer"` が自動で付く。
+- アイコンだけのリンクには `aria-label` で名前を付ける（アイコンの SVG は `aria-hidden="true"` にする）。
 - 新しい共通パーツは `dev/parts.html` に並べて確認する。
 
 ## 5. Git / コミット

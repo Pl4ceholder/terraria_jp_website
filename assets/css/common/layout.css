@@ -2,8 +2,9 @@
    layout.css — l- : ページの骨組み（ヘッダー・メイン・フッター・コンテナ）
    ========================================================================== */
 
-/* 共通ヘッダのカスタム要素は既定で inline なので block にする */
-x-site-header {
+/* 共通パーツのカスタム要素は既定で inline なので block にする */
+x-site-header,
+x-site-footer {
     display: block;
 }
 
@@ -70,10 +71,13 @@ x-site-header {
 
 /* フッター ------------------------------------------------------------ */
 .l-footer {
-    padding: var(--space-m) var(--space-s);
-    color: var(--color-text-muted);
+    padding-block: var(--space-m);
     text-align: center;
     border-top: 1px solid var(--color-border);
+}
+
+.l-footer__copyright {
+    margin-block-start: var(--space-s);
 }
 
 /* 中央寄せの共通コンテナ ---------------------------------------------- */

@@ -24,3 +24,39 @@
 .c-button:active {
     transform: translateY(0);
 }
+
+/* SNS アイコンのリンク（フッターなどで使う） -------------------------- */
+.c-social {
+    display: flex;
+    gap: var(--space-s);
+    justify-content: center;
+}
+
+.c-social__item {
+    display: flex;
+}
+
+.c-social__link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill);
+    transition:
+        color 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.c-social__link:hover {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.c-social__icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: currentcolor;
+}
