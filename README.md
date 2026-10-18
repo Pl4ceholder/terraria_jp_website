@@ -36,8 +36,10 @@ assets/
 │  ├─ common/             全ページ共通（変数・リセット・レイアウト・部品）
 │  └─ pages/              ページ固有
 ├─ js/
-│  └─ main.js             全ページ共通スクリプト
+│  ├─ main.js             全ページ共通スクリプト
+│  └─ components/         共通パーツ（Web Component）
 └─ img/                   画像
+dev/parts.html            共通パーツのプレビュー（開発用）
 ```
 
 ## ブランチ構成

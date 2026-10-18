@@ -40,8 +40,12 @@
 │  │  └─ pages/              ページ固有
 │  │     └─ home.css         p-（トップページ）
 │  ├─ js/
-│  │  └─ main.js             全ページ共通スクリプト
+│  │  ├─ main.js             全ページ共通スクリプト
+│  │  └─ components/         共通パーツ（Web Component）
+│  │     └─ site-header.js   共通ヘッダの正本
 │  └─ img/                   画像（命名は kebab-case、例: hero-bg.png）
+├─ dev/                      開発用（公開ページではない）
+│  └─ parts.html             共通パーツのプレビュー
 └─ .vscode/                  VS Code 推奨設定
 ```
 
@@ -50,6 +54,7 @@
 - 全ページで使う見た目 → `assets/css/common/`
 - 1 ページでしか使わない見た目 → `assets/css/pages/<ページ名>.css`
 - 複数ページで使い回す部品（ボタンなど）→ `assets/css/common/components.css`
+- 複数ページで使い回す HTML のまとまり（ヘッダーなど）→ `assets/js/components/<名前>.js`（第 4.1 節）
 - 新しい CSS ファイルを足したら、必ず `style.css` に `@import` を追記する
 
 ## 2. HTML ルール
@@ -129,6 +134,8 @@ block__element--modifier
 
 ## 4. JavaScript ルール
 
+### 4.1 基本
+
 - `var` は禁止。`const` を優先し、再代入が必要なときだけ `let`。
 - 比較は `===` / `!==` を使う。
 - グローバル変数を増やさない。`main.js` は関数の中か `DOMContentLoaded` の中に書く。
@@ -136,6 +143,24 @@ block__element--modifier
 - 文字列はダブルクォート、文末はセミコロン（Prettier の既定に従う）。
 - 追加のスクリプトは `<script src="..." defer></script>` で読み込む。
 - 機能ごとに関数を分け、1 つの関数を長くしすぎない。
+
+### 4.2 共通パーツ（Web Component）
+
+ヘッダーなど複数ページで使い回す HTML は、カスタム要素 1 つにまとめて `assets/js/components/` に置く。
+使う側のページには、次の 2 行だけを書く。
+
+```html
+<x-site-header></x-site-header>
+<script src="assets/js/components/site-header.js" defer></script>
+```
+
+- `type="module"` は使わない。`file://` で開いたときに読み込まれなくなるため、通常の `<script defer>` にする。
+- テンプレートは JS の中に持つ。外部の HTML を `fetch` すると `file://` で動かなくなる。
+- 見た目は CSS 側（`common/`）に書く。Shadow DOM は使わない（クラスで指定できるようにするため）。
+- カスタム要素の名前はハイフンを 1 つ以上含め、`x-` で始める（例: `x-site-header`）。
+- 初期化済みかどうかを `data-*` で持ち、同じ要素が再接続されても二重に組み立てない。
+- ヘッダーのナビ項目は `site-header.js` の `NAV_ITEMS` で管理する。ページを足したらここを直す。
+- 新しい共通パーツは `dev/parts.html` に並べて確認する。
 
 ## 5. Git / コミット
 
@@ -189,6 +214,7 @@ npm run format  # まとめて整形したいとき（任意）
 - [ ] スマホ幅（375px 程度）で崩れない
 - [ ] キーボード操作と色のコントラストを確認した
 - [ ] クラス名が `l-` / `c-` / `p-` / `u-` のいずれかで始まっている
+- [ ] 共通パーツを変えたら `dev/parts.html` で表示を確認した
 - [ ] 色・余白が `variables.css` の変数になっている
 - [ ] 画像の `alt`、外部リンクの `rel` を確認した
 - [ ] コミットメッセージが `<type>(<scope>): <概要>` の形になっている

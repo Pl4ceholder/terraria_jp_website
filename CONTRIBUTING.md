@@ -78,6 +78,7 @@ CSS ファイル（例: `assets/css/common/variables.css`）を開いて保存�
 
 ビルドは不要です。`index.html` をブラウザで直接開いてください。
 VS Code を使う場合は Live Server などの拡張機能で開いても構いません。
+共通パーツ（ヘッダーなど）の見た目は `dev/parts.html` で確認できます。
 
 ## 3. Windows を使っている人へ（重要）
 
@@ -132,16 +133,17 @@ git push -u origin HEAD
 
 ## 6. つまずいたとき
 
-| 症状                                    | 原因と対処                                                           |
-| --------------------------------------- | -------------------------------------------------------------------- |
-| `npm` が動かない                        | PowerShell の実行ポリシー → 第 3 章                                  |
-| 保存しても整形されない                  | VS Code の Prettier 拡張が入っているか確認する                       |
-| Stylelint の警告がエディタに出ない      | `npm install` をしたか確認（公式拡張は Stylelint を内蔵していない）  |
-| Stylelint がクラス名を指摘する          | `l-` / `c-` / `p-` / `u-` の接頭辞を付ける → CODING_RULES.md 第 3 章 |
-| `npm install` で `EBADENGINE` 警告      | Node.js が 20.19.0 未満。Node.js を更新する                          |
-| `npm install` で脆弱性の警告が出る      | 開発用ツール内の指摘で、公開サイトには影響しない。対応不要           |
-| `node_modules` が `git status` に出ない | 正常。`.gitignore` で除外済み                                        |
-| 日本語が文字化けする                    | ファイルが UTF-8 / LF になっているか確認する                         |
+| 症状                                    | 原因と対処                                                                                                        |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `npm` が動かない                        | PowerShell の実行ポリシー → 第 3 章                                                                               |
+| 保存しても整形されない                  | VS Code の Prettier 拡張が入っているか確認する                                                                    |
+| Stylelint の警告がエディタに出ない      | `npm install` をしたか確認（公式拡張は Stylelint を内蔵していない）                                               |
+| Stylelint がクラス名を指摘する          | `l-` / `c-` / `p-` / `u-` の接頭辞を付ける → CODING_RULES.md 第 3 章                                              |
+| `npm install` で `EBADENGINE` 警告      | Node.js が 20.19.0 未満。Node.js を更新する                                                                       |
+| `npm install` で脆弱性の警告が出る      | 開発用ツール内の指摘で、公開サイトには影響しない。対応不要                                                        |
+| `node_modules` が `git status` に出ない | 正常。`.gitignore` で除外済み                                                                                     |
+| 日本語が文字化けする                    | ファイルが UTF-8 / LF になっているか確認する                                                                      |
+| 共通ヘッダが表示されない                | `<script src="assets/js/components/site-header.js" defer>` を読み込んでいるか確認する → CODING_RULES.md 第 4.2 節 |
 
 ## 7. セットアップ完了チェック
 
