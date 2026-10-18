@@ -30,6 +30,7 @@ CSS のクラス名チェック（Stylelint）をエディタで効かせるた�
 
 ```
 index.html                トップページ
+news.html                 お知らせ
 server.html               サーバー紹介
 assets/
 ├─ css/

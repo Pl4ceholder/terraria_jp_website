@@ -26,6 +26,7 @@
 ```
 .
 ├─ index.html                トップページ
+├─ news.html                 お知らせ
 ├─ server.html               サーバー紹介
 ├─ CODING_RULES.md           この文書
 ├─ package.json              npm スクリプト
@@ -40,6 +41,7 @@
 │  │  │  └─ components.css   c-（ボタンなど使い回す部品）
 │  │  └─ pages/              ページ固有
 │  │     ├─ home.css         p-（トップページ）
+│  │     ├─ news.css         p-（お知らせ）
 │  │     └─ server.css       p-（サーバー紹介）
 │  ├─ js/
 │  │  ├─ main.js             全ページ共通スクリプト

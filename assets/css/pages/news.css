@@ -1,0 +1,61 @@
+/* ==========================================================================
+   news.css — p- : お知らせページ（news.html）専用のスタイル
+   ========================================================================== */
+
+/* ページの導入は共通パーツ c-page-header を使う（components.css） */
+
+/* 記事の並び ---------------------------------------------------------- */
+.p-news-list {
+    padding-block-end: var(--space-l);
+}
+
+/* 1 件分。日付とタイトルをクリックすると本文が開く */
+.p-news-item {
+    border-block-end: 1px solid var(--color-border);
+}
+
+.p-news-item:last-child {
+    border-block-end: 0;
+}
+
+.p-news-item__summary {
+    display: flex;
+    gap: var(--space-s);
+    align-items: baseline;
+    padding-block: var(--space-s);
+    cursor: pointer;
+
+    /* 既定の三角は消して、右端の矢印に置き換える */
+    list-style: none;
+}
+
+.p-news-item__date {
+    flex: none;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.p-news-item__title {
+    font-weight: 700;
+}
+
+.p-news-item__summary:hover {
+    color: var(--color-primary);
+}
+
+.p-news-item__summary::after {
+    margin-inline-start: auto;
+    color: var(--color-text-muted);
+    content: "▾";
+    transition: transform 0.2s ease;
+}
+
+.p-news-item[open] .p-news-item__summary::after {
+    transform: rotate(180deg);
+}
+
+.p-news-item__body {
+    padding-block-end: var(--space-s);
+    color: var(--color-text-muted);
+}
