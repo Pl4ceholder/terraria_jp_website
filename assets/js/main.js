@@ -1,12 +1,6 @@
 // ==========================================================================
 // main.js — Terraria JP 公式サイト 共通スクリプト（仮）
-// サイト全体で使う処理をここに足していく。
+// まだ index.html から読み込んでいない。
+// 使うときは index.html の </body> 直前に次を追加する。
+//   <script src="assets/js/main.js" defer></script>
 // ==========================================================================
-document.addEventListener("DOMContentLoaded", () => {
-    // フッターの年号を自動で更新する
-    // 例) <span data-current-year></span>
-    const year = document.querySelector("[data-current-year]");
-    if (year) {
-        year.textContent = String(new Date().getFullYear());
-    }
-});

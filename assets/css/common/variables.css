@@ -1,5 +1,5 @@
 /* ==========================================================================
-   variables.css — サイト全体で使う変数
+   variables.css — サイト全体で使うデザイントークン
    色や余白を変えたいときは、まずここを書き換える。
    ========================================================================== */
 :root {
@@ -14,11 +14,13 @@
     --color-primary-dark: #2e7d32;
     --color-accent: #ffca28;
     --color-on-primary: #0b1017;
+    --color-header-bg: rgb(16 22 29 / 85%);
+    --color-overlay: rgb(0 0 0 / 45%);
 
     /* フォント -------------------------------------------------------- */
     --font-base:
-        "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP", Meiryo,
-        system-ui, sans-serif;
+        "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP", "Meiryo", system-ui,
+        sans-serif;
 
     /* レイアウト ------------------------------------------------------ */
     --content-width: 1100px;
