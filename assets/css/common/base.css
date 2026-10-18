@@ -2,6 +2,8 @@
    base.css — 文字・リンクなど要素単位の基本スタイル
    ========================================================================== */
 body {
+    display: flex;
+    flex-direction: column;
     font-family: var(--font-base);
     color: var(--color-text);
     background-color: var(--color-bg);
