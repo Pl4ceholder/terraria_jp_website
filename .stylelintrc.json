@@ -1,0 +1,20 @@
+{
+    "extends": ["stylelint-config-standard"],
+    "rules": {
+        "selector-class-pattern": [
+            "^(?:l|c|p|u)-[a-z0-9]+(?:-[a-z0-9]+)*(?:__[a-z0-9]+(?:-[a-z0-9]+)*)?(?:--[a-z0-9]+(?:-[a-z0-9]+)*)?$",
+            {
+                "message": "クラス名は FLOCSS の接頭辞 (l- / c- / p- / u-) を付け、BEM で命名してください (例: p-hero__title)"
+            }
+        ],
+        "custom-property-pattern": [
+            "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+            {
+                "message": "CSS 変数は kebab-case で命名してください (例: --color-primary)"
+            }
+        ],
+        "selector-max-id": 0,
+        "declaration-no-important": true,
+        "max-nesting-depth": 0
+    }
+}

@@ -1,0 +1,21 @@
+{
+    "name": "terraria-jp-website",
+    "version": "0.1.0",
+    "private": true,
+    "description": "Terraria JP 公式サイト",
+    "engines": {
+        "node": ">=20.19.0"
+    },
+    "scripts": {
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "lint:css": "stylelint \"assets/css/**/*.css\"",
+        "lint:css:fix": "stylelint \"assets/css/**/*.css\" --fix",
+        "lint": "npm run format:check && npm run lint:css"
+    },
+    "devDependencies": {
+        "prettier": "^3.9.10",
+        "stylelint": "^17.16.0",
+        "stylelint-config-standard": "^40.0.0"
+    }
+}

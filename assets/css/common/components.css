@@ -1,9 +1,8 @@
 /* ==========================================================================
-   components.css — ページをまたいで使い回す部品
+   components.css — c- : ページをまたいで使い回す部品
    ========================================================================== */
 
-/* ボタン -------------------------------------------------------------- */
-.button {
+.c-button {
     display: inline-block;
     padding: 0.75em 1.75em;
     color: var(--color-on-primary);
@@ -16,12 +15,12 @@
         transform 0.2s ease;
 }
 
-.button:hover {
+.c-button:hover {
     color: var(--color-on-primary);
     background-color: var(--color-accent);
     transform: translateY(-2px);
 }
 
-.button:active {
+.c-button:active {
     transform: translateY(0);
 }

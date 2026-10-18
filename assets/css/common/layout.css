@@ -1,13 +1,8 @@
 /* ==========================================================================
-   layout.css — ヘッダー・メイン・フッターなどページの骨組み
+   layout.css — l- : ページの骨組み（ヘッダー・メイン・フッター・コンテナ）
    ========================================================================== */
-body {
-    display: flex;
-    flex-direction: column;
-}
 
-/* ヘッダー ------------------------------------------------------------ */
-header {
+.l-header {
     position: sticky;
     top: 0;
     z-index: 10;
@@ -16,32 +11,30 @@ header {
     gap: var(--space-s);
     height: var(--header-height);
     padding-inline: var(--space-s);
-    background-color: rgb(16 22 29 / 85%);
+    background-color: var(--color-header-bg);
     border-bottom: 1px solid var(--color-border);
     backdrop-filter: blur(8px);
 }
 
-header > a {
+.l-header__logo {
     font-size: 1.15rem;
     font-weight: 700;
     letter-spacing: 0.04em;
 }
 
-/* メイン -------------------------------------------------------------- */
-main {
+.l-main {
     flex: 1;
 }
 
-/* フッター ------------------------------------------------------------ */
-footer {
+.l-footer {
     padding: var(--space-m) var(--space-s);
-    text-align: center;
     color: var(--color-text-muted);
+    text-align: center;
     border-top: 1px solid var(--color-border);
 }
 
-/* 中央寄せの共通コンテナ ---------------------------------------------- */
-.container {
+/* 中央寄せの共通コンテナ */
+.l-container {
     width: min(100% - 2rem, var(--content-width));
     margin-inline: auto;
 }
