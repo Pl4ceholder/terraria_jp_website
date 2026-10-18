@@ -1,0 +1,98 @@
+/* ==========================================================================
+   server.css — p- : サーバー紹介ページ（server.html）専用のスタイル
+   ========================================================================== */
+
+/* ページの導入 -------------------------------------------------------- */
+.p-server-hero {
+    padding-block: var(--space-l);
+    text-align: center;
+}
+
+.p-server-hero__inner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-s);
+    align-items: center;
+    max-width: 44rem;
+    margin-inline: auto;
+}
+
+.p-server-hero__lead {
+    color: var(--color-text-muted);
+}
+
+.p-server-hero__title {
+    font-size: clamp(1.8rem, 6vw, 3rem);
+}
+
+.p-server-hero__text {
+    color: var(--color-text-muted);
+}
+
+.p-server-hero__actions {
+    margin-block-start: var(--space-s);
+}
+
+/* セクションの枠 ------------------------------------------------------ */
+.p-server-section {
+    padding-block: var(--space-m);
+}
+
+.p-server-section__title {
+    margin-block-end: var(--space-m);
+    font-size: clamp(1.3rem, 3vw, 1.8rem);
+    text-align: center;
+}
+
+/* できること（カードの並び） ------------------------------------------ */
+.p-server-features {
+    display: grid;
+    gap: var(--space-s);
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.p-server-feature {
+    padding: var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.p-server-feature__title {
+    margin-block-end: var(--space-xs);
+    font-size: 1.05rem;
+}
+
+.p-server-feature__text {
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+}
+
+/* ルール -------------------------------------------------------------- */
+.p-server-rules {
+    max-width: 44rem;
+    margin-inline: auto;
+}
+
+.p-server-rules__item {
+    display: flex;
+    gap: var(--space-xs);
+    align-items: flex-start;
+    padding-block: var(--space-s);
+    border-block-end: 1px solid var(--color-border);
+}
+
+/* 行頭の丸。1 行の高さ（1.6rem）の中で上下中央になる位置に置く */
+.p-server-rules__item::before {
+    flex: none;
+    width: 0.4rem;
+    height: 0.4rem;
+    margin-block-start: 0.6rem;
+    content: "";
+    background-color: var(--color-primary);
+    border-radius: var(--radius-pill);
+}
+
+.p-server-rules__item:last-child {
+    border-block-end: 0;
+}

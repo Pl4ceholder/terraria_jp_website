@@ -30,6 +30,7 @@ CSS のクラス名チェック（Stylelint）をエディタで効かせるた�
 
 ```
 index.html                トップページ
+server.html               サーバー紹介
 assets/
 ├─ css/
 │  ├─ style.css           スタイルの入口（@import を並べる）

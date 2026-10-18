@@ -26,6 +26,7 @@
 ```
 .
 ├─ index.html                トップページ
+├─ server.html               サーバー紹介
 ├─ CODING_RULES.md           この文書
 ├─ package.json              npm スクリプト
 ├─ assets/
@@ -38,7 +39,8 @@
 │  │  │  ├─ layout.css       l-（ヘッダー・フッター・コンテナ）
 │  │  │  └─ components.css   c-（ボタンなど使い回す部品）
 │  │  └─ pages/              ページ固有
-│  │     └─ home.css         p-（トップページ）
+│  │     ├─ home.css         p-（トップページ）
+│  │     └─ server.css       p-（サーバー紹介）
 │  ├─ js/
 │  │  ├─ main.js             全ページ共通スクリプト
 │  │  └─ components/         共通パーツ（Web Component）
