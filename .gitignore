@@ -1,0 +1,6 @@
+# 依存関係
+node_modules/
+
+# OS が作るファイル
+Thumbs.db
+.DS_Store

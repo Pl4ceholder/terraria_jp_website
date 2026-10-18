@@ -1,0 +1,33 @@
+{
+    "files.eol": "\n",
+    "files.insertFinalNewline": true,
+    "files.trimTrailingWhitespace": true,
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.codeActionsOnSave": {
+        "source.fixAll.stylelint": "explicit"
+    },
+    "stylelint.validate": ["css"],
+    "files.exclude": {
+        ".editorconfig": true,
+        ".gitattributes": true,
+        ".gitignore": true,
+        ".prettierignore": true,
+        ".prettierrc": true,
+        ".stylelintrc.json": true,
+        "node_modules": true,
+        "package-lock.json": true,
+        "package.json": true
+    },
+    "search.exclude": {
+        ".editorconfig": true,
+        ".gitattributes": true,
+        ".gitignore": true,
+        ".prettierignore": true,
+        ".prettierrc": true,
+        ".stylelintrc.json": true,
+        "node_modules": true,
+        "package-lock.json": true,
+        "package.json": true
+    }
+}
