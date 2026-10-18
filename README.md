@@ -6,7 +6,8 @@ Terraria の日本コミュニティ向けの公式サイトです。
 
 - 素の HTML / CSS / JavaScript による静的サイト（ビルド無し・フレームワーク無し）
 - ページは `index.html` をブラウザで開けば確認できる
-- Node.js は整形・検査ツールを動かすためだけに使う（**20.19.0 以上**）
+- 整形・検査はエディタの保存時に自動で走る（コミット前のチェックは無し）
+- Node.js（20.19.0 以上）は Stylelint をエディタで動かすときだけ必要
 
 ## ドキュメント
 
@@ -19,10 +20,10 @@ Terraria の日本コミュニティ向けの公式サイトです。
 
 ```bash
 npm install
-npm run lint
 ```
 
-`npm run lint` が終了コード `0` で通れば準備完了です。
+整形（Prettier）は VS Code 拡張だけで動くため npm は必須ではありません。
+CSS のクラス名チェック（Stylelint）をエディタで効かせるために `npm install` します。
 手順の詳細は [CONTRIBUTING.md](./CONTRIBUTING.md) を参照してください。
 
 ## ディレクトリ構成

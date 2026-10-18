@@ -169,22 +169,23 @@ chore: Prettier と Stylelint を導入
 ## 6. ツールと使い方
 
 導入済み: Prettier（整形）、Stylelint（CSS の検査）、EditorConfig。
-セットアップ手順は [CONTRIBUTING.md](./CONTRIBUTING.md) を参照。
+
+整形と検査は**エディタで保存したとき**に自動で走る（`.vscode/settings.json` で設定済み）。
+コミット前にコマンドを実行する必要はない。
 
 ```bash
-npm install          # 初回のみ（依存関係の取得）
-npm run format       # HTML / CSS / JS / MD を整形
-npm run lint         # 整形チェック + CSS の検査
-npm run lint:css:fix # CSS の自動修正できる指摘を直す
+npm install     # 任意（初回のみ）。Stylelint をエディタで動かす場合は必要
+npm run format  # まとめて整形したいとき（任意）
 ```
 
-- コミット前に `npm run lint` を通す。エラーが残っている状態でコミットしない。
+- 保存時の整形（Prettier）は VS Code 拡張に内蔵の Prettier でも動くため、npm が無くても使える。
+- Stylelint をエディタで動かすには `npm install` が必要（公式拡張は Stylelint を内蔵していない）。
+- 拡張機能は `.vscode/extensions.json` の推奨を入れる。
 - `node_modules/` はコミットしない（`.gitignore` 済み）。
-- VS Code を使う場合、`.vscode/settings.json` により保存時に自動整形される。拡張機能は `.vscode/extensions.json` の推奨を入れる。
 
 ## 7. 提出前チェックリスト
 
-- [ ] `npm run lint` が通る
+- [ ] 保存時に自動整形・検査が効いている（余計な空白や書き方の警告が残っていない）
 - [ ] スマホ幅（375px 程度）で崩れない
 - [ ] キーボード操作と色のコントラストを確認した
 - [ ] クラス名が `l-` / `c-` / `p-` / `u-` のいずれかで始まっている

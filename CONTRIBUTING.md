@@ -46,29 +46,17 @@ git switch -c feature/#<issue番号>_<内容>
 - `main` と `develop` へは直接コミットせず、必ず `feature` ブランチで作業する
 - 作業を始める前に `develop` の最新を取り込む
 
-### 手順 3: 依存関係をインストールする
+### 手順 3: 依存関係をインストールする（任意）
 
 ```bash
 npm install
 ```
 
-`package-lock.json` と完全に同じ状態にしたい場合は `npm ci` を使う（初回はどちらでも可）。
+これは **Stylelint をエディタで動かすため**だけに必要です。
+Prettier の保存時整形だけなら npm は不要です（VS Code 拡張に Prettier が内蔵されています）。
+`package-lock.json` と完全に同じ状態にしたい場合は `npm ci` を使う。
 
-### 手順 4: 動作確認する
-
-```bash
-npm run lint
-```
-
-次のように表示されれば成功です。
-
-```
-All matched files use Prettier code style!
-```
-
-`stylelint` のエラーが 0 件なら OK（成功時は何も表示されません）。終了コードが `0` かどうかで判断できます。
-
-### 手順 5: 推奨拡張機能を入れる（VS Code）
+### 手順 4: 推奨拡張機能を入れる（VS Code）
 
 VS Code でこのフォルダを開くと、推奨拡張機能の通知が出ます。インストールしてください。
 
@@ -76,7 +64,15 @@ VS Code でこのフォルダを開くと、推奨拡張機能の通知が出ま
 - Stylelint（CSS 検査）
 - EditorConfig
 
-同梱の `.vscode/settings.json` により、**保存時に自動で整形**されます。
+同梱の `.vscode/settings.json` により、保存時に自動で整形・検査されます。
+ツール用の設定ファイル（`.prettierrc` など）は Explorer では非表示にしています。
+
+### 手順 5: 保存時の動作を確認する
+
+CSS ファイル（例: `assets/css/common/variables.css`）を開いて保存してみてください。
+
+- Prettier が効いていれば、インデントが 4 スペースに揃う
+- Stylelint が効いていれば、クラス名の付け方などに警告が出る（問題がなければ何も出ない）
 
 ### 手順 6: ページを表示して確認する
 
@@ -98,7 +94,6 @@ npm : このシステムではスクリプトの実行が無効になってい�
 
     ```powershell
     npm.cmd install
-    npm.cmd run lint
     ```
 
 - **対処 B: 実行ポリシーを変更する**（管理者権限不要・推奨）
@@ -116,13 +111,12 @@ Git の改行コードは `.gitattributes` で **LF 固定**にしています�
 
 ## 4. よく使うコマンド
 
-| コマンド               | 用途                           | 実行タイミング       |
-| ---------------------- | ------------------------------ | -------------------- |
-| `npm install`          | 依存関係を取得                 | 初回・更新時         |
-| `npm run format`       | HTML / CSS / JS / MD を整形    | 手動で整えたいとき   |
-| `npm run lint`         | 整形チェック + CSS 検査        | コミット前（必須）   |
-| `npm run lint:css:fix` | CSS の自動修正できる指摘を直す | CSS で指摘が出たとき |
+| コマンド         | 用途                                 | 実行タイミング     |
+| ---------------- | ------------------------------------ | ------------------ |
+| `npm install`    | 依存関係を取得（任意・Stylelint 用） | 初回・更新時       |
+| `npm run format` | HTML / CSS / JS / MD をまとめて整形  | 任意（通常は不要） |
 
+整形と検査は**保存時に自動で走る**ので、コミット前にコマンドを実行する必要はありません。
 `npm` が動かない場合は、上記の `npm` を `npm.cmd` に読み替えてください。
 
 ## 5. コミットして PR を出すまで
@@ -135,14 +129,14 @@ git push -u origin HEAD
 
 - コミットメッセージの形式は [CODING_RULES.md](./CODING_RULES.md) の第 5 章を参照
 - Pull Request は **`develop` 向け**に作成する（`main` へは向けない）
-- PR を出す前に `npm run lint` を通す
 
 ## 6. つまずいたとき
 
 | 症状                                    | 原因と対処                                                           |
 | --------------------------------------- | -------------------------------------------------------------------- |
 | `npm` が動かない                        | PowerShell の実行ポリシー → 第 3 章                                  |
-| `npm run lint` が整形エラーで落ちる     | `npm run format` を実行してから再実行                                |
+| 保存しても整形されない                  | VS Code の Prettier 拡張が入っているか確認する                       |
+| Stylelint の警告がエディタに出ない      | `npm install` をしたか確認（公式拡張は Stylelint を内蔵していない）  |
 | Stylelint がクラス名を指摘する          | `l-` / `c-` / `p-` / `u-` の接頭辞を付ける → CODING_RULES.md 第 3 章 |
 | `npm install` で `EBADENGINE` 警告      | Node.js が 20.19.0 未満。Node.js を更新する                          |
 | `npm install` で脆弱性の警告が出る      | 開発用ツール内の指摘で、公開サイトには影響しない。対応不要           |
@@ -152,8 +146,8 @@ git push -u origin HEAD
 ## 7. セットアップ完了チェック
 
 - [ ] `git clone` してフォルダに入れた
-- [ ] `npm install` が成功した
-- [ ] `npm run lint` が終了コード 0 で通った
+- [ ] （任意）`npm install` を実行した（Stylelint をエディタで使う場合）
+- [ ] CSS を保存すると自動で整形される
 - [ ] VS Code の推奨拡張機能を入れた
 - [ ] `index.html` がブラウザで表示された
 - [ ] `develop` から作業ブランチを切った
