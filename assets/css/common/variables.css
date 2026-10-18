@@ -1,0 +1,37 @@
+/* ==========================================================================
+   variables.css — サイト全体で使う変数
+   色や余白を変えたいときは、まずここを書き換える。
+   ========================================================================== */
+:root {
+    /* カラー ---------------------------------------------------------- */
+    --color-bg: #10161d;
+    --color-surface: #1b2530;
+    --color-surface-alt: #232f3d;
+    --color-border: #33465a;
+    --color-text: #e8eef4;
+    --color-text-muted: #9fb0c0;
+    --color-primary: #4caf50;
+    --color-primary-dark: #2e7d32;
+    --color-accent: #ffca28;
+    --color-on-primary: #0b1017;
+
+    /* フォント -------------------------------------------------------- */
+    --font-base:
+        "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP", Meiryo,
+        system-ui, sans-serif;
+
+    /* レイアウト ------------------------------------------------------ */
+    --content-width: 1100px;
+    --header-height: 64px;
+
+    /* 余白 ------------------------------------------------------------ */
+    --space-xs: 0.5rem;
+    --space-s: 1rem;
+    --space-m: 2rem;
+    --space-l: 4rem;
+
+    /* 角丸・影 -------------------------------------------------------- */
+    --radius: 12px;
+    --radius-pill: 999px;
+    --shadow: 0 8px 24px rgb(0 0 0 / 35%);
+}
