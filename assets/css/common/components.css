@@ -25,6 +25,30 @@
     transform: translateY(0);
 }
 
+/* 下層ページの導入（見出し・リード・説明・ボタン） -------------------- */
+.c-page-header {
+    padding-block: var(--space-l) var(--space-m);
+    text-align: center;
+}
+
+.c-page-header__lead {
+    margin-block-end: var(--space-xs);
+    color: var(--color-text-muted);
+}
+
+.c-page-header__title {
+    font-size: clamp(1.8rem, 6vw, 3rem);
+}
+
+.c-page-header__text {
+    margin-block-start: var(--space-s);
+    color: var(--color-text-muted);
+}
+
+.c-page-header__actions {
+    margin-block-start: var(--space-s);
+}
+
 /* SNS アイコンのリンク（フッターなどで使う） -------------------------- */
 .c-social {
     display: flex;

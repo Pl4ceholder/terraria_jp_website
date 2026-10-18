@@ -12,8 +12,14 @@
         <x-site-header></x-site-header>
 
         <main class="l-main">
-            <div class="l-container">
-                <h1>共通パーツ プレビュー</h1>
+            <header class="c-page-header">
+                <div class="l-container l-container--narrow">
+                    <p class="c-page-header__lead">開発用</p>
+                    <h1 class="c-page-header__title">共通パーツ プレビュー</h1>
+                </div>
+            </header>
+
+            <div class="l-container l-container--narrow">
                 <p>
                     開発用のページです。共通パーツ（ヘッダーなど）の見た目をここで確認します。
                     新しいパーツを足したら、このページに並べて確認できるようにする。
@@ -26,6 +32,17 @@
                 <p>
                     <button class="c-button" type="button">ボタン（button）</button>
                 </p>
+
+                <h2>ページの導入（c-page-header）</h2>
+                <p>お知らせ・サーバー紹介などの下層ページの見出しに使う。</p>
+                <div class="c-page-header">
+                    <p class="c-page-header__lead">リード文（何のページか）</p>
+                    <h3 class="c-page-header__title">ページの見出し</h3>
+                    <p class="c-page-header__text">説明文。必要なページではここに文章を足す。</p>
+                    <p class="c-page-header__actions">
+                        <button class="c-button" type="button">ボタン（button）</button>
+                    </p>
+                </div>
             </div>
         </main>
 

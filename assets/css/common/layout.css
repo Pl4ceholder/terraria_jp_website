@@ -86,6 +86,11 @@ x-site-footer {
     margin-inline: auto;
 }
 
+/* 読み物向けの狭いコンテナ（お知らせなど） ---------------------------- */
+.l-container--narrow {
+    width: min(100% - 2rem, var(--content-width-narrow));
+}
+
 /* 狭い画面: ナビを開閉メニューにする ---------------------------------- */
 @media (width <= 640px) {
     .l-header__toggle {

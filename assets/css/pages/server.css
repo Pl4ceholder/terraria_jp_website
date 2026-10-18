@@ -2,36 +2,7 @@
    server.css — p- : サーバー紹介ページ（server.html）専用のスタイル
    ========================================================================== */
 
-/* ページの導入 -------------------------------------------------------- */
-.p-server-hero {
-    padding-block: var(--space-l);
-    text-align: center;
-}
-
-.p-server-hero__inner {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-s);
-    align-items: center;
-    max-width: 44rem;
-    margin-inline: auto;
-}
-
-.p-server-hero__lead {
-    color: var(--color-text-muted);
-}
-
-.p-server-hero__title {
-    font-size: clamp(1.8rem, 6vw, 3rem);
-}
-
-.p-server-hero__text {
-    color: var(--color-text-muted);
-}
-
-.p-server-hero__actions {
-    margin-block-start: var(--space-s);
-}
+/* ページの導入は共通パーツ c-page-header を使う（components.css） */
 
 /* セクションの枠 ------------------------------------------------------ */
 .p-server-section {
@@ -70,7 +41,7 @@
 
 /* ルール -------------------------------------------------------------- */
 .p-server-rules {
-    max-width: 44rem;
+    max-width: var(--content-width-narrow);
     margin-inline: auto;
 }
 
