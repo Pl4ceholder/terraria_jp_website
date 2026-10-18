@@ -1,0 +1,47 @@
+/* ==========================================================================
+   layout.css — ヘッダー・メイン・フッターなどページの骨組み
+   ========================================================================== */
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ヘッダー ------------------------------------------------------------ */
+header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    height: var(--header-height);
+    padding-inline: var(--space-s);
+    background-color: rgb(16 22 29 / 85%);
+    border-bottom: 1px solid var(--color-border);
+    backdrop-filter: blur(8px);
+}
+
+header > a {
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+/* メイン -------------------------------------------------------------- */
+main {
+    flex: 1;
+}
+
+/* フッター ------------------------------------------------------------ */
+footer {
+    padding: var(--space-m) var(--space-s);
+    text-align: center;
+    color: var(--color-text-muted);
+    border-top: 1px solid var(--color-border);
+}
+
+/* 中央寄せの共通コンテナ ---------------------------------------------- */
+.container {
+    width: min(100% - 2rem, var(--content-width));
+    margin-inline: auto;
+}

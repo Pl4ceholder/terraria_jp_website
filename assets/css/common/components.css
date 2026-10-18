@@ -1,0 +1,27 @@
+/* ==========================================================================
+   components.css — ページをまたいで使い回す部品
+   ========================================================================== */
+
+/* ボタン -------------------------------------------------------------- */
+.button {
+    display: inline-block;
+    padding: 0.75em 1.75em;
+    color: var(--color-on-primary);
+    font-weight: 700;
+    background-color: var(--color-primary);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow);
+    transition:
+        background-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.button:hover {
+    color: var(--color-on-primary);
+    background-color: var(--color-accent);
+    transform: translateY(-2px);
+}
+
+.button:active {
+    transform: translateY(0);
+}
