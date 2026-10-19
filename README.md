@@ -10,6 +10,7 @@ Terraria の日本コミュニティ向けの公式サイトです。
 - 投稿は「承認待ち」で保存され、運営が公開を決める（`/admin/columns`）
 - Discord のマルチ募集を `/recruit` で見られる（中身は bot から受け取った写し。サイトから Discord は叩かない）。Discord 側で流れた募集は、書き込みの止まった時刻から自動で出なくなる
 - Discord のイベント（これからの予定）が、お知らせページに自動で出る
+- Discord の実績（誰が何を解放したか）も bot から受け取って保存している（マイページで見せる。ページはこれから）
 - 整形・検査はエディタの保存時に自動で走る（コミット前のチェックは無し）
 - Node.js（20.19.0 以上）は Stylelint と Wrangler に使う
 
@@ -96,14 +97,16 @@ worker/                    動くページと API（Cloudflare Workers）
 ├─ recruit.js              マルチ募集の HTML
 ├─ recruitments.js         「いま立っている募集」の選び方と、流れる時刻
 ├─ events.js               「これからのイベント」を選ぶ条件
+├─ achievements.js         実績の取り込み方と、自分の実績の引き方
 ├─ markdown.js             Markdown → HTML
-├─ migrations/             すでに動いている DB に列を足す SQL
+├─ migrations/             すでに動いている DB に列や表を足す SQL
 ├─ schema.sql              保存場所の定義
 └─ seed.sql                動作確認用の記事
 scripts/                   補助のスクリプト
 ├─ check-free-plan.mjs     料金が発生する設定が入っていないか確かめる
 ├─ check-events.mjs        「これからのイベント」の選び方を確かめる
-└─ check-recruit.mjs       「いま立っている募集」の選び方を確かめる
+├─ check-recruit.mjs       「いま立っている募集」の選び方を確かめる
+└─ check-achievements.mjs  実績の取り込み方と引き方を確かめる
 dev/parts.html             共通パーツのプレビュー（開発用。公開されない）
 ```
 
@@ -120,10 +123,11 @@ dev/parts.html             共通パーツのプレビュー（開発用。公�
 ## 公開
 
 ```bash
-npm run check:free     # 無料枠だけで動くか確かめる
-npm run check:events   # 「これからのイベント」の選び方を確かめる
-npm run check:recruit  # 「いま立っている募集」の選び方を確かめる
-npm run deploy         # Cloudflare Workers へ公開する
+npm run check:free          # 無料枠だけで動くか確かめる
+npm run check:events        # 「これからのイベント」の選び方を確かめる
+npm run check:recruit       # 「いま立っている募集」の選び方を確かめる
+npm run check:achievements  # 実績の取り込み方と引き方を確かめる
+npm run deploy              # Cloudflare Workers へ公開する
 ```
 
 コラムは D1 に入っているので、記事が増えてもデプロイは要りません。

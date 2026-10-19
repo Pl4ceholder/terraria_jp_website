@@ -13,6 +13,7 @@
 flowchart TD
     A["利用者・投稿者<br />アカウント不要"] --> W
     B["運営<br />合言葉で入る"] --> W
+    BOT["Discord の bot<br />募集・イベント・実績を送る"] -->|SYNC_SECRET| W
 
     subgraph W["Cloudflare Workers（terraria-jp）★無料枠"]
         P["手書きのページ<br />public/ をそのまま配信（無料・無制限）"]
@@ -26,6 +27,8 @@ flowchart TD
         T2["images<br />記事の画像（R2 は使わない）"]
         T3["uploads<br />アップロードの回数（いたずら対策）"]
         T4["logins<br />ログイン失敗の回数"]
+        T5["recruitments / events / member_achievements<br />Discord からの写し"]
+        T6["sync_state<br />最後に届いた時刻"]
     end
 ```
 
@@ -39,6 +42,8 @@ CSS と共通パーツは相対パスで読み込むので、そのまま動き�
 | コラムの投稿           | `/post`                                             |
 | コラムの一覧           | `/columns`                                          |
 | コラムの承認（運営用） | `/admin/columns`                                    |
+| マルチ募集の一覧       | `/recruit`                                          |
+| お知らせ               | `/news`                                             |
 
 記事は「承認待ち」で保存され、運営が承認したものだけが一覧に並びます。
 投稿にアカウントは要りません（誰でも投稿できます）。
@@ -89,10 +94,11 @@ CSS と共通パーツは相対パスで読み込むので、そのまま動き�
 ### コードを直したとき（デプロイが要る）
 
 ```bash
-npm run check:free     # 有料の設定が混ざっていないか確かめる
-npm run check:events   # 「これからのイベント」の選び方が期待どおりか確かめる
-npm run check:recruit  # 「いま立っている募集」の選び方が期待どおりか確かめる
-npm run deploy         # Cloudflare Workers へ公開する
+npm run check:free          # 有料の設定が混ざっていないか確かめる
+npm run check:events        # 「これからのイベント」の選び方が期待どおりか確かめる
+npm run check:recruit       # 「いま立っている募集」の選び方が期待どおりか確かめる
+npm run check:achievements  # 実績の取り込み方と、自分の実績の引き方が期待どおりか確かめる
+npm run deploy              # Cloudflare Workers へ公開する
 ```
 
 ### 合言葉を変える
@@ -101,7 +107,7 @@ npm run deploy         # Cloudflare Workers へ公開する
 npx wrangler secret put ADMIN_PASSWORD
 ```
 
-### マルチ募集・イベントを Discord と同期する
+### マルチ募集・イベント・実績を Discord と同期する
 
 Discord の内容の持ち主は Discord 側です。Discord の bot が集めてサイトへ送り、サイトは
 その写しを DB に入れます。サイト側は Discord を叩かないので、Discord が重くてもサイトは
@@ -115,13 +121,15 @@ npx wrangler secret put SYNC_SECRET   # bot とサイトに同じ文字列を入
 | ------------------------ | --------------------------------- | -------------------------------------- |
 | いま立っているマルチ募集 | `POST /api/internal/recruitments` | `/recruit`                             |
 | これからのイベント       | `POST /api/internal/events`       | お知らせページの「これからのイベント」 |
+| 実績（解放した人）       | `POST /api/internal/achievements` | マイページの「自分の実績」             |
 
 - bot が止まっていても、最後に届いた内容がそのまま残ります（`/recruit` に最終更新が出ます）
 - 合言葉が違うと 401、まだ登録していなければ 503 で断ります
 - 届いた内容で丸ごと入れ替えるので、何度届いても同じ結果になります（途中で切れても、
   中途半端な一覧は残りません）
 - 名前・説明・場所・時刻を Discord 側で直すと、次の入れ替えで新しい内容になります
-- 募集は `recruitments`、イベントは `events`、最後に届いた時刻は `sync_state` に入ります
+- 募集は `recruitments`、イベントは `events`、実績は `achievements` と
+  `member_achievements`、最後に届いた時刻は `sync_state` に入ります
 
 イベントは、出し方が 2 通りあります。条件は `worker/events.js` の 1 か所だけに書いてあり、
 `npm run check:events` で手元で確かめられます。
@@ -146,18 +154,33 @@ npx wrangler secret put SYNC_SECRET   # bot とサイトに同じ文字列を入
 | 流れる時刻を過ぎて、猶予も過ぎた      | 出さない（「N 件は出していません」） |
 | 流れる時刻が分からない（古い行）      | 出る（判断できないものは消さない）   |
 
-### 保存場所に、あとから列を足す
+実績（マイページに出る「自分の実績」）は、サイト側では知る手立てがありません。Discord の
+ロールに出るのは「いまつけている称号 1 つ」だけで、解放済みの持ち主は bot 側の保存場所
+（Redis）にしか無いためです。そこで bot が集めて送ります。
 
-`worker/schema.sql` は新しい DB を作るときの形です。すでに動いている DB に列を足すときは、
+- 実績の名前は Discord のロール名をそのまま使います（説明やカテゴリは Discord 側にも無い）
+- 実績を消すと、次の入れ替えでサイトからも消えます
+- 称号は「いまつけているもの」だけを送ります。解放していない称号はサイト側で付けない扱いに
+  します（Discord で直接ロールをつけたときの食い違いを、そのまま出さないため）
+- 実績の付与は手動でたまにしか起きないので、bot は 30 分に 1 回だけ送ります。5 分ごとに送ると
+  D1 の無料枠（1 日の書き込み行数）を無駄に使うためです（bot 側の `ACHIEVEMENT_SYNC_MINUTES`）
+
+### 保存場所に、あとから列や表を足す
+
+`worker/schema.sql` は新しい DB を作るときの形です。すでに動いている DB に列や表を足すときは、
 `worker/migrations/` の中のファイルを、リモートとローカルの両方に 1 回ずつ流します。
 
 ```bash
 npx wrangler d1 execute terraria-jp --local  --file=worker/migrations/001_recruit_activity.sql
 npx wrangler d1 execute terraria-jp --remote --file=worker/migrations/001_recruit_activity.sql
+
+npx wrangler d1 execute terraria-jp --local  --file=worker/migrations/002_achievements.sql
+npx wrangler d1 execute terraria-jp --remote --file=worker/migrations/002_achievements.sql
 ```
 
-同じファイルをもう一度流すと「列がもうある」でエラーになります。増える列には既定値が入るので、
-すでに入っているデータは消えません。
+増える列には既定値が入るので、すでに入っているデータは消えません。同じファイルをもう一度
+流すと「列がもうある」でエラーになります（`002_achievements.sql` は表を足すだけなので、
+もう一度流しても何も起きません）。
 
 ### ローカルで試す
 
@@ -218,13 +241,15 @@ npx wrangler d1 execute terraria-jp --local --command "SELECT id, title, status 
 | お知らせに「これからのイベント」が出ない                   | Discord にこれからのイベントが無いか、bot がまだ送れていない。空のときは、かたまりごと出さない                         |
 | bot 側で「受け付けられませんでした」と出る（401）          | bot とサイトの `SYNC_SECRET` が違う。`npx wrangler secret put SYNC_SECRET` で入れ直す                                  |
 | bot 側で「同期の設定がされていません」と出る（503）        | サイト側に `SYNC_SECRET` がまだ無い。登録する                                                                          |
+| マイページに実績が出ない                                   | bot がまだ送れていない（実績は 30 分に 1 回）。付与した直後は、少し待つ                                                |
+| 実績の名前が空になる                                       | Discord 側のロールが消えている。名前が引けないロールは送らないので、サイトからも消える                                 |
 
 ## 7. これからやること
 
 - **Discord 連携**: 次の 3 つを、動く単位ごとに足していく。
     - マルチ募集の一覧（`/recruit`）…… 済み
     - イベントのお知らせ（お知らせページの「これからのイベント」）…… 済み
-    - マイページ（自分の実績）…… Discord ログイン（OAuth2）と、bot からの実績の受け取り
+    - マイページ（自分の実績）…… 実績の受け取りは済み。Discord ログイン（OAuth2）とページがこれから
     - どれも、`SYNC_SECRET` をサイトと bot の両方に同じ文字列で登録しないと動きません
 - **GitHub Actions**: `origin`（`Pl4ceholder/terraria_jp_website`）は正しいので、あとは
   ワークフローを足すだけ。`develop` への push で `npm run check:free` と `npm run deploy`
