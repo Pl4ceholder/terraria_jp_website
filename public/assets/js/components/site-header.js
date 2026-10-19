@@ -27,7 +27,6 @@ const NAV_ITEMS = [
         match: (path) => path.includes("/recruit"),
     },
     { label: "サーバー紹介", href: "./server.html" },
-    { label: "参加方法", href: "./join.html" },
 ];
 
 const HEADER_TEMPLATE = document.createElement("template");
