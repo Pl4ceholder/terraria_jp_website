@@ -15,7 +15,8 @@
 Node.js の最低バージョンは同梱ツールの都合で決まっています（`stylelint@17` が `>=20.19.0` を要求）。
 `package.json` の `engines` に記載済みなので、古い Node だと `npm install` 時に警告が出ます。
 
-ビルドツールは不要です。Node.js は整形・検査ツールを動かすためだけに使います。
+ビルドツールは不要です。Node.js は整形・検査ツールと、コラムのビルドに使います。
+HTML / CSS / JavaScript を書くだけなら、Node.js が無くても作業できます。
 
 ## 2. セットアップ手順
 
@@ -76,9 +77,18 @@ CSS ファイル（例: `assets/css/common/variables.css`）を開いて保存�
 
 ### 手順 6: ページを表示して確認する
 
-ビルドは不要です。`index.html` をブラウザで直接開いてください。
+`index.html` をブラウザで直接開いてください。
 VS Code を使う場合は Live Server などの拡張機能で開いても構いません。
 共通パーツ（ヘッダーなど）の見た目は `dev/parts.html` で確認できます。
+
+コラム（`columns/`）を触ったときだけは、先に組み立ててから開きます。
+
+```bash
+npm run build
+```
+
+`_site/index.html` を開くと、記事が一覧に出ているはずです。
+`_site/` は生成物なのでコミットしないでください。
 
 ## 3. Windows を使っている人へ（重要）
 
@@ -115,9 +125,11 @@ Git の改行コードは `.gitattributes` で **LF 固定**にしています�
 | コマンド         | 用途                                 | 実行タイミング     |
 | ---------------- | ------------------------------------ | ------------------ |
 | `npm install`    | 依存関係を取得（任意・Stylelint 用） | 初回・更新時       |
+| `npm run build`  | コラムを HTML にして `_site/` を作る | コラムを触ったとき |
 | `npm run format` | HTML / CSS / JS / MD をまとめて整形  | 任意（通常は不要） |
 
 整形と検査は**保存時に自動で走る**ので、コミット前にコマンドを実行する必要はありません。
+コラムは Pull Request を出すと自動で組み立てられ、書き方の間違いがあればチェックが赤くなります。
 `npm` が動かない場合は、上記の `npm` を `npm.cmd` に読み替えてください。
 
 ## 5. コミットして PR を出すまで
@@ -131,7 +143,30 @@ git push -u origin HEAD
 - コミットメッセージの形式は [CODING_RULES.md](./CODING_RULES.md) の第 5 章を参照
 - Pull Request は **`develop` 向け**に作成する（`main` へは向けない）
 
-## 6. つまずいたとき
+## 6. コラムを投稿する（Git を使わない人向け）
+
+コラムは `columns/` に Markdown ファイルを 1 つ置くだけで投稿できます。
+Git の操作は不要で、GitHub の画面だけで完結します。
+
+1. [`columns/README.md`](./columns/README.md) を読む（書式の一覧があります）
+2. GitHub で `columns/_template.md` を開き、右上の「Raw」を押して中身をコピーする
+3. 「Add file」→「Create new file」で `columns/2026-10-19-すきな名前.md` を作って貼り付ける
+4. 内容を書いて「Commit changes」を押す
+5. 自動で Pull Request ができるので、運営が確認してマージする
+
+`title` や `date` の書き方を間違えると、Pull Request のチェックが赤くなります。
+サイトが壊れることはないので、その印を見て直してください。
+
+### 公開の仕組み（運営向け）
+
+- [`.github/workflows/pages.yml`](./.github/workflows/pages.yml) が、コラムを HTML に組み立てて
+  GitHub Pages へ公開する
+- 公開されるのは `_site/` の中身だけ（`dev/` や `columns/*.md` は公開されない）
+- 公開されるのは `main` へ入ったときだけ。`develop` では組み立ての確認だけを行う
+- **初回だけ**、リポジトリの Settings → Pages → Build and deployment で
+  Source を「GitHub Actions」に変える必要がある（「Deploy from a branch」のままでは公開されない）
+
+## 7. つまずいたとき
 
 | 症状                                    | 原因と対処                                                                                                        |
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
@@ -144,11 +179,14 @@ git push -u origin HEAD
 | `node_modules` が `git status` に出ない | 正常。`.gitignore` で除外済み                                                                                     |
 | 日本語が文字化けする                    | ファイルが UTF-8 / LF になっているか確認する                                                                      |
 | 共通ヘッダが表示されない                | `<script src="assets/js/components/site-header.js" defer>` を読み込んでいるか確認する → CODING_RULES.md 第 4.2 節 |
+| 共通フッターだけ表示されない            | 別の共通パーツと同じ変数名を使っていないか確認する → CODING_RULES.md 第 4.2 節                                    |
+| コラムのビルドが失敗する                | `title` か `date` が抜けている、または `date` の形が違う。エラーに出たファイル名を直す → columns/README.md        |
+| `_site/` が `git status` に出ない       | 正常。`.gitignore` で除外済み（生成物はコミットしない）                                                           |
 
-## 7. セットアップ完了チェック
+## 8. セットアップ完了チェック
 
 - [ ] `git clone` してフォルダに入れた
-- [ ] （任意）`npm install` を実行した（Stylelint をエディタで使う場合）
+- [ ] （任意）`npm install` を実行した（Stylelint とコラムのビルドに必要）
 - [ ] CSS を保存すると自動で整形される
 - [ ] VS Code の推奨拡張機能を入れた
 - [ ] `index.html` がブラウザで表示された

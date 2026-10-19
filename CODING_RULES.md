@@ -7,19 +7,21 @@
 
 ## 0. 前提
 
-| 項目           | 方針                                                   |
-| -------------- | ------------------------------------------------------ |
-| 構成           | ビルド無しの静的サイト（素の HTML / CSS / JavaScript） |
-| フレームワーク | 使わない（React 等は導入しない）                       |
-| 対応ブラウザ   | 最新の Chrome / Edge / Firefox / Safari                |
-| 対応画面       | モバイルファースト（スマホ優先、PC は広げる）          |
-| テーマ         | ダークテーマ固定（ライトテーマは作らない）             |
-| 文字コード     | UTF-8（BOM 無し）                                      |
-| 改行コード     | LF                                                     |
-| インデント     | 半角スペース 4 つ                                      |
-| コメント言語   | 日本語                                                 |
+| 項目           | 方針                                                                        |
+| -------------- | --------------------------------------------------------------------------- |
+| 構成           | 素の HTML / CSS / JavaScript。コラムだけ Markdown からビルドする（第 1 章） |
+| フレームワーク | 使わない（React 等は導入しない）                                            |
+| 対応ブラウザ   | 最新の Chrome / Edge / Firefox / Safari                                     |
+| 対応画面       | モバイルファースト（スマホ優先、PC は広げる）                               |
+| テーマ         | ダークテーマ固定（ライトテーマは作らない）                                  |
+| 文字コード     | UTF-8（BOM 無し）                                                           |
+| 改行コード     | LF                                                                          |
+| インデント     | 半角スペース 4 つ                                                           |
+| コメント言語   | 日本語                                                                      |
 
 外部ライブラリ（CDN 読み込みを含む）を足すときは、先に相談する。
+今のところ承認済みなのは、ビルド時だけ使う `marked`（Markdown の変換）と `prettier`（整形）で、
+どちらも閲覧者には配信されない。
 
 ## 1. ディレクトリ構成
 
@@ -42,15 +44,28 @@
 │  │  └─ pages/              ページ固有
 │  │     ├─ home.css         p-（トップページ）
 │  │     ├─ news.css         p-（お知らせ）
-│  │     └─ server.css       p-（サーバー紹介）
+│  │     ├─ server.css       p-（サーバー紹介）
+│  │     └─ columns.css      p-（コラムの一覧と記事）
 │  ├─ js/
 │  │  ├─ main.js             全ページ共通スクリプト
 │  │  └─ components/         共通パーツ（Web Component）
 │  │     ├─ site-header.js   共通ヘッダの正本
 │  │     └─ site-footer.js   共通フッターの正本
 │  └─ img/                   画像（命名は kebab-case、例: hero-bg.png）
+├─ columns/                  コラムの記事（人が書くのはここだけ）
+│  ├─ README.md              投稿のしかた（投稿者向け）
+│  ├─ _template.md           記事のひな形（コピーして使う）
+│  ├─ <名前>.md              記事の中身
+│  └─ img/                   記事で使う画像
+├─ tools/
+│  └─ build-columns.mjs      コラムを HTML に組み立てるスクリプト
 ├─ dev/                      開発用（公開ページではない）
 │  └─ parts.html             共通パーツのプレビュー
+├─ .github/workflows/
+│  └─ pages.yml              ビルドと GitHub Pages への公開
+├─ _site/                    生成物（コミットしない。ここが公開される）
+│  ├─ columns.html           コラムの一覧（生成物）
+│  └─ columns/               各記事（生成物）
 └─ .vscode/                  VS Code 推奨設定
 ```
 
@@ -59,8 +74,10 @@
 - 全ページで使う見た目 → `assets/css/common/`
 - 1 ページでしか使わない見た目 → `assets/css/pages/<ページ名>.css`
 - 複数ページで使い回す部品（ボタンなど）→ `assets/css/common/components.css`
-- 複数ページで使い回す HTML のまとまり（ヘッダーなど）→ `assets/js/components/<名前>.js`（第 4.1 節）
+- 複数ページで使い回す HTML のまとまり（ヘッダーなど）→ `assets/js/components/<名前>.js`（第 4.2 節）
 - 新しい CSS ファイルを足したら、必ず `style.css` に `@import` を追記する
+- コラムの記事 → `columns/<名前>.md`。HTML は `tools/build-columns.mjs` が作るので、
+  `_site/` の中は直接編集しない（第 6 章）
 
 ## 2. HTML ルール
 
@@ -121,6 +138,8 @@ block__element--modifier
 - ネストは使わない（素の CSS のため）。子孫セレクタも最小限にする。
 - 要素セレクタとクラスの複合（`p.p-hero__lead` など）は書かない。
 - クラス名だけで場所を特定できるようにし、`>` やスペースでの指定に頼らない。
+- 例外: Markdown から生成するコラムの本文（`p-column__body`）は、こちらでクラスを付けられない
+  ので、そのブロックの中だけ子孫セレクタで要素（`h2` や `ul` など）に当てる。
 - プロパティの並びは、レイアウト → 見た目 → 文字 → その他の順で書く。
 
 ### 3.4 変数（デザイントークン）
@@ -165,9 +184,18 @@ block__element--modifier
 - カスタム要素の名前はハイフンを 1 つ以上含め、`x-` で始める（例: `x-site-header`）。
 - 初期化済みかどうかを `data-*` で持ち、同じ要素が再接続されても二重に組み立てない。
 - ヘッダーのナビ項目は `site-header.js` の `NAV_ITEMS` で管理する。ページを足したらここを直す。
+  項目に `match` を書くと、そのページでは「現在地」として扱う（`columns/xxx.html` のように、
+  href とページ名が一致しない下の階層をまとめて指したいときに使う）。
 - フッターの SNS リンクは `site-footer.js` の `SOCIAL_LINKS` で管理する。
   外部 URL は `http` から始まる文字列にすれば、`target="_blank"` と `rel="noopener noreferrer"` が自動で付く。
 - アイコンだけのリンクには `aria-label` で名前を付ける（アイコンの SVG は `aria-hidden="true"` にする）。
+- 下の階層のページ（`columns/xxx.html` など）でもリンクがずれないよう、サイトのルートは
+  スクリプト自身の URL から求める。値は `SiteHeader.root` / `SiteFooter.root` に持ち、
+  トップレベルの `const` には置かない（下の注意を参照）。
+- 通常の `<script>` は**グローバルを共有する**。同じ名前のトップレベル `const` を別の
+  コンポーネントで宣言すると、後から読み込んだ方が
+  `SyntaxError: Identifier '...' has already been declared` で止まり、そのパーツが丸ごと
+  表示されなくなる。名前はコンポーネントごとに変えるか、クラスの中に閉じ込める。
 - 新しい共通パーツは `dev/parts.html` に並べて確認する。
 
 ## 5. Git / コミット
@@ -216,6 +244,24 @@ npm run format  # まとめて整形したいとき（任意）
 - 拡張機能は `.vscode/extensions.json` の推奨を入れる。
 - `node_modules/` はコミットしない（`.gitignore` 済み）。
 
+### コラムのビルド
+
+コラムだけは Markdown から HTML を作る。生成物は `_site/` にまとまり、GitHub Pages には
+`_site/` の中身だけが公開される。
+
+```bash
+npm install     # 初回のみ
+npm run build   # columns/ の Markdown を HTML にして _site/ を組み立てる
+```
+
+- 人が書くのは `columns/*.md` だけ。`columns.html` と `columns/*.html` は生成物なので直接編集しない
+- `_site/` はコミットしない（`.gitignore` 済み）
+- 公開されるのは `_site/` の中身だけ（`dev/` や `columns/*.md` は公開されない）
+- Markdown の変換には `marked` を使う（ビルド時だけ。閲覧者には配信されない）
+- 生の HTML は文字として出す。コメント（`<!-- -->`）だけは目印としてそのまま残す
+- 記事の書き方は [columns/README.md](./columns/README.md)、公開の流れは
+  [CONTRIBUTING.md](./CONTRIBUTING.md) を参照
+
 ## 7. 提出前チェックリスト
 
 - [ ] 保存時に自動整形・検査が効いている（余計な空白や書き方の警告が残っていない）
@@ -225,4 +271,5 @@ npm run format  # まとめて整形したいとき（任意）
 - [ ] 共通パーツを変えたら `dev/parts.html` で表示を確認した
 - [ ] 色・余白が `variables.css` の変数になっている
 - [ ] 画像の `alt`、外部リンクの `rel` を確認した
+- [ ] コラムを足した・変えたときは `npm run build` が通ることを確認した
 - [ ] コミットメッセージが `<type>(<scope>): <概要>` の形になっている

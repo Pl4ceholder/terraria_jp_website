@@ -4,17 +4,19 @@ Terraria の日本コミュニティ向けの公式サイトです。
 
 ## 概要
 
-- 素の HTML / CSS / JavaScript による静的サイト（ビルド無し・フレームワーク無し）
-- ページは `index.html` をブラウザで開けば確認できる
+- 素の HTML / CSS / JavaScript による静的サイト（フレームワーク無し）
+- コラム（`columns/*.md`）だけは Markdown からビルドする。生成物は `_site/` にまとまり、そこが公開される
+- コラム以外のページは `index.html` をブラウザで開けば確認できる
 - 整形・検査はエディタの保存時に自動で走る（コミット前のチェックは無し）
-- Node.js（20.19.0 以上）は Stylelint をエディタで動かすときだけ必要
+- Node.js（20.19.0 以上）は Stylelint とコラムのビルドに使う
 
 ## ドキュメント
 
-| 文書                                 | 内容                                         |
-| ------------------------------------ | -------------------------------------------- |
-| [CONTRIBUTING.md](./CONTRIBUTING.md) | 環境構築と開発の進め方。**最初にこれを読む** |
-| [CODING_RULES.md](./CODING_RULES.md) | コーディング規約（HTML / CSS / JS / Git）    |
+| 文書                                     | 内容                                         |
+| ---------------------------------------- | -------------------------------------------- |
+| [CONTRIBUTING.md](./CONTRIBUTING.md)     | 環境構築と開発の進め方。**最初にこれを読む** |
+| [CODING_RULES.md](./CODING_RULES.md)     | コーディング規約（HTML / CSS / JS / Git）    |
+| [columns/README.md](./columns/README.md) | コラムの投稿のしかた（Git を使わない人向け） |
 
 ## はじめかた
 
@@ -23,7 +25,7 @@ npm install
 ```
 
 整形（Prettier）は VS Code 拡張だけで動くため npm は必須ではありません。
-CSS のクラス名チェック（Stylelint）をエディタで効かせるために `npm install` します。
+CSS のクラス名チェック（Stylelint）とコラムのビルドのために `npm install` します。
 手順の詳細は [CONTRIBUTING.md](./CONTRIBUTING.md) を参照してください。
 
 ## ディレクトリ構成
@@ -41,6 +43,10 @@ assets/
 │  ├─ main.js             全ページ共通スクリプト
 │  └─ components/         共通パーツ（Web Component）
 └─ img/                   画像
+columns/                  コラムの記事（Markdown。投稿者はここだけ触る）
+tools/                    ビルドなどのスクリプト
+.github/workflows/        GitHub Actions（ビルドと公開）
+_site/                    生成物（コミットしない。ここが公開される）
 dev/parts.html            共通パーツのプレビュー（開発用）
 ```
 
@@ -53,3 +59,10 @@ dev/parts.html            共通パーツのプレビュー（開発用）
 | `feature/#<issue番号>_<内容>` | 作業用。1 つの issue につき 1 つ作る   |
 
 作業は `feature` ブランチで行い、Pull Request は `develop` 向けに作成します。
+
+## 公開
+
+`main` にマージされると [GitHub Actions](./.github/workflows/pages.yml) がサイトを組み立て、
+GitHub Pages へ公開します。公開されるのは生成物の `_site/` の中身だけです。
+
+初回だけ、Settings → Pages → Build and deployment の Source を「GitHub Actions」にしてください。
