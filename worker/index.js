@@ -23,6 +23,7 @@
 // 「エラーになる」だけで、料金は発生しない。詳しくは README.md を参照。
 // ==========================================================================
 
+import { EVENT_LIST_SQL } from "./events.js";
 import { renderMarkdown, buildExcerpt } from "./markdown.js";
 import { renderArticle, renderList, renderNotFound } from "./html.js";
 import { renderRecruitList } from "./recruit.js";
@@ -70,7 +71,7 @@ const EVENT_NAME_MAX = 200;
 const EVENT_LOCATION_MAX = 200;
 const EVENT_URL_MAX = 500;
 const EVENT_DESCRIPTION_MAX = 2000;
-/** 終わったイベントを出しっぱなしにしないための猶予（この時間を過ぎたら出さない） */
+/** 終わりが無いイベントを出しておく猶予（これより前に始まったものは出さない） */
 const EVENT_GRACE_HOURS = 12;
 
 export default {
@@ -568,6 +569,7 @@ const toIso = (value, fallback) => {
  * Discord の bot から、これからのイベントを受け取る。
  *
  * 募集と同じ考え方。届いた内容で丸ごと入れ替えるので、何度届いても同じ結果になる。
+ * 内容（名前・説明・場所・時刻）が変わったときも、次の入れ替えで新しい内容になる。
  * 終わったイベントは Discord が返さなくなるので、次の入れ替えで自然に消える。
  */
 const handleEventSync = async (request, env) => {
@@ -658,22 +660,13 @@ const toEventRows = (payload, syncedAt) => {
     return { data };
 };
 
-/** これからのイベント。お知らせページが取りに来る */
+/** これからのイベント。お知らせページが取りに来る（選び方は events.js に 1 つだけ） */
 const handleEventList = async (env) => {
     const now = Date.now();
     const graceIso = new Date(now - EVENT_GRACE_HOURS * 60 * 60 * 1000).toISOString();
 
     const [list, state] = await Promise.all([
-        env.DB.prepare(
-            `SELECT id, name, description, location, cover_url, url, user_count, start_at, end_at
-               FROM events
-              WHERE (end_at IS NULL OR end_at >= ?1)
-                AND start_at >= ?2
-              ORDER BY start_at
-              LIMIT ?3`,
-        )
-            .bind(new Date(now).toISOString(), graceIso, EVENT_MAX)
-            .all(),
+        env.DB.prepare(EVENT_LIST_SQL).bind(new Date(now).toISOString(), graceIso, EVENT_MAX).all(),
         env.DB.prepare(`SELECT value FROM sync_state WHERE key = 'events_synced_at'`).first(),
     ]);
 
