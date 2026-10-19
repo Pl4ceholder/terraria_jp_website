@@ -42,8 +42,14 @@ const IMAGE_EXTENSIONS = {
     "image/webp": "webp",
 };
 
-/** 同じ人が 1 時間に上げられる画像の数（置き場所を荒らされないため） */
+/** 同じ人から 1 時間に上がる画像の数（置き場所を荒らされないため） */
 const IMAGES_PER_HOUR = 20;
+
+/** 運営のログイン（合言葉）の決まりごと */
+const ADMIN_COOKIE = "admin_session";
+const SESSION_HOURS = 12;
+const LOGIN_FAILURES = 5;
+const LOGIN_WINDOW_MINUTES = 10;
 
 export default {
     async fetch(request, env) {
@@ -55,6 +61,12 @@ export default {
             if (path === "/api/columns") return await handlePost(request, env);
             if (path === "/api/images") return await handleUpload(request, env);
             if (path.startsWith("/img/")) return await handleImage(path.slice(5), env);
+
+            if (path === "/api/admin/session") return await handleAdminSession(request, env);
+            if (path === "/api/admin/columns") return await handleAdminList(request, env);
+
+            const adminColumn = path.match(/^\/api\/admin\/columns\/([A-Za-z0-9-]+)$/);
+            if (adminColumn) return await handleAdminAction(request, env, adminColumn[1]);
 
             if (path === "/columns.html" || path === "/columns/") {
                 return await handleColumnList(env);
@@ -342,6 +354,156 @@ const handleImage = async (key, env) => {
     });
 };
 
+// 運営（承認） ---------------------------------------------------------------
+
+/**
+ * 合言葉での出入り。
+ *   GET    … いま入っているかどうか
+ *   POST   … 合言葉を確かめて、通ったらクッキーを渡す
+ *   DELETE … 出る
+ */
+const handleAdminSession = async (request, env) => {
+    if (request.method === "GET") {
+        return jsonResponse({ ok: await isAdmin(request, env) });
+    }
+
+    if (request.method === "DELETE") {
+        if (!isSameOrigin(request)) return forbidden();
+
+        return jsonResponse({ ok: true }, 200, {
+            "set-cookie": `${ADMIN_COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`,
+        });
+    }
+
+    if (request.method !== "POST") return methodNotAllowed("GET, POST, DELETE");
+    if (!isSameOrigin(request)) return forbidden();
+
+    // 合言葉が設定されていなければ誰も入れない。
+    // 設定し忘れたまま、誰でも入れる状態になるのを防ぐ。
+    if (!env.ADMIN_PASSWORD) {
+        return jsonResponse({ ok: false, message: "合言葉が設定されていません。" }, 503);
+    }
+
+    const payload = await readJson(request, 4096);
+    if (payload.error) return payload.error;
+
+    const ipHash = await hashIp(request, env);
+    if (await isLoginBlocked(env, ipHash)) {
+        return jsonResponse(
+            {
+                ok: false,
+                message: "間違いが続いています。しばらく待ってから、もう一度お試しください。",
+            },
+            429,
+        );
+    }
+
+    const password = String(payload.data?.password ?? "");
+    if (!isSame(password, env.ADMIN_PASSWORD)) {
+        await recordLoginFailure(env, ipHash);
+        return jsonResponse({ ok: false, message: "合言葉が違います。" }, 401);
+    }
+
+    // 本番（https）のときだけ Secure を付ける。
+    // 付けっぱなしにすると、ローカル（http）でクッキーが保存されず確認できなくなる。
+    const secure = new URL(request.url).protocol === "https:";
+
+    return jsonResponse({ ok: true }, 200, {
+        "set-cookie": buildSessionCookie(await issueSession(env), secure),
+    });
+};
+
+/** 承認待ち・公開中・見送りを、状態ごとに出す */
+const handleAdminList = async (request, env) => {
+    if (!(await isAdmin(request, env))) return unauthorized();
+
+    const asked = new URL(request.url).searchParams.get("status") ?? "";
+    const status = ["pending", "published", "rejected"].includes(asked) ? asked : "pending";
+
+    const { results } = await env.DB.prepare(
+        `SELECT id, slug, title, body_html, author, tags, status, created_at, published_at
+           FROM columns
+          WHERE status = ?1
+          ORDER BY created_at DESC
+          LIMIT 50`,
+    )
+        .bind(status)
+        .all();
+
+    const { results: counts } = await env.DB.prepare(
+        `SELECT status, COUNT(*) AS count FROM columns GROUP BY status`,
+    ).all();
+
+    return jsonResponse({
+        ok: true,
+        status,
+        counts: sumByStatus(counts),
+        columns: (results ?? []).map(toAdminColumn),
+    });
+};
+
+/** 公開する・見送る・承認待ちに戻す・削除する */
+const handleAdminAction = async (request, env, id) => {
+    if (request.method !== "POST") return methodNotAllowed("POST");
+    if (!isSameOrigin(request)) return forbidden();
+    if (!(await isAdmin(request, env))) return unauthorized();
+
+    const payload = await readJson(request, 4096);
+    if (payload.error) return payload.error;
+
+    const action = String(payload.data?.action ?? "");
+
+    if (action === "delete") {
+        await env.DB.prepare(`DELETE FROM columns WHERE id = ?1`).bind(id).run();
+        return jsonResponse({ ok: true });
+    }
+
+    const status = { publish: "published", reject: "rejected", pending: "pending" }[action];
+    if (!status) {
+        return jsonResponse({ ok: false, message: "知らない操作です。" }, 400);
+    }
+
+    // 公開したときだけ日付を入れる。すでに入っていれば残す（公開し直しても日付が変わらない）。
+    // 承認待ちに戻したら日付は消す。
+    await env.DB.prepare(
+        `UPDATE columns
+            SET status = ?1,
+                published_at = CASE WHEN ?1 = 'published' THEN COALESCE(published_at, ?2) ELSE NULL END
+          WHERE id = ?3`,
+    )
+        .bind(status, new Date().toISOString(), id)
+        .run();
+
+    return jsonResponse({ ok: true });
+};
+
+/** DB の 1 行を、承認画面で使う形にする */
+const toAdminColumn = (row) => ({
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    html: row.body_html ?? "",
+    author: row.author ?? "",
+    tags: (row.tags ?? "")
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+    status: row.status,
+    createdAt: row.created_at ?? "",
+    publishedAt: row.published_at ?? "",
+});
+
+/** 状態ごとの件数を、必ず 3 つそろえて返す */
+const sumByStatus = (rows) => {
+    const counts = { pending: 0, published: 0, rejected: 0 };
+
+    for (const row of rows ?? []) {
+        if (row.status in counts) counts[row.status] = row.count;
+    }
+
+    return counts;
+};
+
 // 共通の道具 ----------------------------------------------------------------
 
 /** いたずら対策。IP そのものは残さず、毎回同じ値になる形にして保存する */
@@ -352,6 +514,106 @@ const hashIp = async (request, env) => {
 
     return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 };
+
+/** 合言葉を確かめて、通った人に渡す「入っている証」 */
+const issueSession = async (env) => {
+    const expires = Date.now() + SESSION_HOURS * 60 * 60 * 1000;
+
+    return `${expires}.${await sign(env, String(expires))}`;
+};
+
+/** 渡された証が本物で、まだ期限が切れていないか */
+const verifySession = async (request, env) => {
+    const [expires, signature] = readCookie(request, ADMIN_COOKIE).split(".");
+    if (!expires || !signature) return false;
+    if (Number(expires) < Date.now()) return false;
+
+    return isSame(signature, await sign(env, expires));
+};
+
+const isAdmin = async (request, env) => {
+    if (!env.ADMIN_PASSWORD) return false;
+
+    return verifySession(request, env);
+};
+
+/** 証が本物かを見分けるための印。合言葉を鍵にして作る */
+const sign = async (env, message) => {
+    const key = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(env.ADMIN_PASSWORD ?? ""),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"],
+    );
+    const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
+
+    return [...new Uint8Array(signature)]
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("");
+};
+
+/** 文字列が同じかどうか。全部を見比べて、時間で中身を推測されないようにする */
+const isSame = (a, b) => {
+    if (a.length !== b.length) return false;
+
+    let difference = 0;
+    for (let index = 0; index < a.length; index += 1) {
+        difference |= a.charCodeAt(index) ^ b.charCodeAt(index);
+    }
+
+    return difference === 0;
+};
+
+const readCookie = (request, name) => {
+    for (const part of (request.headers.get("cookie") ?? "").split(";")) {
+        const separator = part.indexOf("=");
+        if (separator !== -1 && part.slice(0, separator).trim() === name) {
+            return part.slice(separator + 1).trim();
+        }
+    }
+
+    return "";
+};
+
+const buildSessionCookie = (value, secure) =>
+    `${ADMIN_COOKIE}=${value}; Path=/; Max-Age=${SESSION_HOURS * 60 * 60}; HttpOnly; SameSite=Lax${
+        secure ? "; Secure" : ""
+    }`;
+
+/** 別のサイトから勝手に送られたものではないか（クッキーを使う操作の護り） */
+const isSameOrigin = (request) => {
+    const origin = request.headers.get("origin");
+
+    return origin === null || origin === new URL(request.url).origin;
+};
+
+const isLoginBlocked = async (env, ipHash) => {
+    const row = await env.DB.prepare(
+        `SELECT COUNT(*) AS count FROM logins WHERE ip_hash = ?1 AND created_at > ?2`,
+    )
+        .bind(ipHash, new Date(Date.now() - LOGIN_WINDOW_MINUTES * 60 * 1000).toISOString())
+        .first();
+
+    return (row?.count ?? 0) >= LOGIN_FAILURES;
+};
+
+const recordLoginFailure = async (env, ipHash) => {
+    await env.DB.batch([
+        env.DB.prepare(`DELETE FROM logins WHERE created_at < ?1`).bind(
+            new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        ),
+        env.DB.prepare(`INSERT INTO logins (id, ip_hash, created_at) VALUES (?1, ?2, ?3)`).bind(
+            crypto.randomUUID(),
+            ipHash,
+            new Date().toISOString(),
+        ),
+    ]);
+};
+
+const unauthorized = () => jsonResponse({ ok: false, message: "合言葉を入れてください。" }, 401);
+
+const forbidden = () => jsonResponse({ ok: false, message: "受け付けられませんでした。" }, 403);
 
 /** JSON を読む。大きすぎるものは読み込まずに断る */
 const readJson = async (request, maxBytes) => {
@@ -371,10 +633,10 @@ const readJson = async (request, maxBytes) => {
     }
 };
 
-const jsonResponse = (data, status = 200) =>
+const jsonResponse = (data, status = 200, headers = {}) =>
     new Response(JSON.stringify(data), {
         status,
-        headers: { "content-type": "application/json; charset=utf-8" },
+        headers: { "content-type": "application/json; charset=utf-8", ...headers },
     });
 
 const htmlResponse = (html) =>

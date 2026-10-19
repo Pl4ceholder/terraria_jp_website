@@ -1,0 +1,11 @@
+# ローカルで動かすときの設定。
+# このファイルを .dev.vars という名前でコピーして、値を入れる。
+#     Copy-Item .dev.vars.example .dev.vars
+#
+# .dev.vars は Git に入らない（.gitignore 済み）。
+# 本番（Cloudflare 上）の値は .dev.vars ではなく secrets に入れる。
+#     npx wrangler secret put ADMIN_PASSWORD
+
+# 承認ページ（/admin/columns.html）に入るための合言葉。
+# 誰にも当てられないよう、長い文字列にすること。
+ADMIN_PASSWORD=""

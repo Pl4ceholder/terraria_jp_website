@@ -51,3 +51,14 @@ CREATE TABLE IF NOT EXISTS uploads (
 
 CREATE INDEX IF NOT EXISTS idx_uploads_ip
     ON uploads (ip_hash, created_at);
+
+-- 合言葉を間違えた記録。
+-- 総当たりを防ぐため、間違いが続いたら少し待ってもらう。
+CREATE TABLE IF NOT EXISTS logins (
+    id TEXT PRIMARY KEY,
+    ip_hash TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_logins_ip
+    ON logins (ip_hash, created_at);

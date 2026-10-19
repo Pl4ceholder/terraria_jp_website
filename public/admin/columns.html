@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <!-- 運営用。検索からは入れないようにしておく（合言葉とは別の話） -->
+        <meta name="robots" content="noindex" />
+        <title>コラムの承認 | Terraria JP</title>
+        <link rel="stylesheet" href="../assets/css/style.css" />
+    </head>
+
+    <body>
+        <!-- 共通ヘッダ（assets/js/components/site-header.js） -->
+        <x-site-header></x-site-header>
+
+        <main class="l-main">
+            <header class="c-page-header">
+                <div class="l-container">
+                    <p class="c-page-header__lead">運営用</p>
+                    <h1 class="c-page-header__title">コラムの承認</h1>
+                    <p class="c-page-header__text">
+                        投稿されたコラムを読んで、公開するかどうかを決めます。公開するとすぐ一覧に並びます。
+                    </p>
+                </div>
+            </header>
+
+            <div class="l-container">
+                <div class="p-admin">
+                    <!-- 合言葉を入れる前 -->
+                    <section class="p-admin__login" data-admin-login>
+                        <form class="p-admin__login-form" data-admin-login-form novalidate>
+                            <div class="p-admin__field">
+                                <label class="p-admin__label" for="admin-password">合言葉</label>
+                                <input
+                                    class="p-admin__input"
+                                    id="admin-password"
+                                    type="password"
+                                    autocomplete="current-password"
+                                    data-admin-password
+                                />
+                                <p class="p-admin__hint">
+                                    運営の間で共有している合言葉を入れます。
+                                </p>
+                            </div>
+                            <button class="c-button" type="submit" data-admin-login-submit>
+                                入る
+                            </button>
+                        </form>
+                        <p
+                            class="p-admin__message"
+                            role="status"
+                            data-admin-login-message
+                            hidden
+                        ></p>
+                    </section>
+
+                    <!-- 入ったあと -->
+                    <section class="p-admin__panel" data-admin-panel hidden>
+                        <div class="p-admin__toolbar">
+                            <div class="p-admin__filters" role="group" aria-label="表示するもの">
+                                <button
+                                    class="p-admin__filter"
+                                    type="button"
+                                    data-admin-filter="pending"
+                                >
+                                    承認待ち<span class="p-admin__count" data-admin-count="pending"
+                                        >0</span
+                                    >
+                                </button>
+                                <button
+                                    class="p-admin__filter"
+                                    type="button"
+                                    data-admin-filter="published"
+                                >
+                                    公開中<span class="p-admin__count" data-admin-count="published"
+                                        >0</span
+                                    >
+                                </button>
+                                <button
+                                    class="p-admin__filter"
+                                    type="button"
+                                    data-admin-filter="rejected"
+                                >
+                                    見送り<span class="p-admin__count" data-admin-count="rejected"
+                                        >0</span
+                                    >
+                                </button>
+                            </div>
+                            <button class="p-admin__logout" type="button" data-admin-logout>
+                                出る
+                            </button>
+                        </div>
+
+                        <p class="p-admin__message" role="status" data-admin-message hidden></p>
+                        <div class="p-admin__list" data-admin-list></div>
+                    </section>
+
+                    <noscript>
+                        <p class="p-admin__hint">この画面は、JavaScript を有効にすると使えます。</p>
+                    </noscript>
+                </div>
+            </div>
+        </main>
+
+        <!-- 共通フッター（assets/js/components/site-footer.js） -->
+        <x-site-footer></x-site-footer>
+
+        <script src="../assets/js/components/site-header.js" defer></script>
+        <script src="../assets/js/components/site-footer.js" defer></script>
+        <script src="../assets/js/pages/admin.js" defer></script>
+    </body>
+</html>
