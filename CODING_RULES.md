@@ -66,6 +66,7 @@
 │     │  │  └─ site-footer.js 共通フッターの正本
 │     │  └─ pages/           そのページだけのスクリプト
 │     │     ├─ post.js       投稿フォーム
+│     │     ├─ news.js       お知らせ（これからのイベント）
 │     │     └─ admin.js      承認
 │     └─ img/                画像（命名は kebab-case、例: hero-bg.png）
 ├─ worker/                   動くページと API（Cloudflare Workers）
@@ -94,6 +95,7 @@
 - 複数ページで使い回す HTML のまとまり（ヘッダーなど）→
   `public/assets/js/components/<名前>.js`（第 4.2 節）
 - 1 ページだけの動き → `public/assets/js/pages/<ページ名>.js`（第 4.3 節）
+  （`post.js` / `news.js` / `admin.js`）
 - 新しい CSS ファイルを足したら、必ず `style.css` に `@import` を追記する
 - サーバー側の処理と API → `worker/index.js`（第 6 章）
 - 保存場所（テーブル）を変える → `worker/schema.sql` に書き、ローカルと本番の両方に適用する
@@ -291,6 +293,8 @@ chore: Prettier と Stylelint を導入
 - Discord の内容をサイトに出すときは、サイトから Discord を叩かず、bot から
   `POST /api/internal/...` で受け取って D1 に入れる。合言葉は `SYNC_SECRET`（合言葉が
   無ければ 503、違えば 401）。受け取った内容で丸ごと入れ替え、何度届いても同じ結果にする
+- その内容を見せるときは、ページ側（`pages/*.js`）が `GET /api/...` を読んで画面を作る。
+  1 件も無いとき・取れなかったときは、かたまりごと出さない
 - 保存場所（テーブル）は `worker/schema.sql` に書く。何度実行しても同じ結果になるように書く
 - スキーマを変えたら、ローカル（`npm run db:local`）と本番（`npm run db:remote`）の両方に適用する
 - 本番のデータを直接変える作業は、先に相談する
