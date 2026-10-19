@@ -9,6 +9,7 @@
     },
     "stylelint.validate": ["css"],
     "files.exclude": {
+        "_site": true,
         ".editorconfig": true,
         ".gitattributes": true,
         ".gitignore": true,
@@ -20,6 +21,7 @@
         "package.json": true
     },
     "search.exclude": {
+        "_site": true,
         ".editorconfig": true,
         ".gitattributes": true,
         ".gitignore": true,

@@ -11,9 +11,16 @@
 // ==========================================================================
 
 // ナビの項目。ページができたら href を合わせる（今は仮）。
+// match は「その項目を現在地とみなすページ」の判定。href とページ名が一致しない
+// 下の階層のページ（columns/xxx.html など）をまとめて指したいときに使う。
 const NAV_ITEMS = [
     { label: "ホーム", href: "./" },
     { label: "お知らせ", href: "./news.html" },
+    {
+        label: "コラム",
+        href: "./columns.html",
+        match: (path) => path.includes("/columns/"),
+    },
     { label: "サーバー紹介", href: "./server.html" },
     { label: "参加方法", href: "./join.html" },
 ];
@@ -37,22 +44,54 @@ HEADER_TEMPLATE.innerHTML = `
 `;
 
 /**
- * リンク先が今開いているページかどうかを判定する。
+ * ナビの項目が今開いているページかどうかを判定する。
  * 末尾の index.html は同じページとして扱う。
+ * match を持つ項目は、その判定だけを使う。
  */
-const isCurrentPage = (href) => {
+const isCurrentPage = (item) => {
+    if (typeof item.match === "function") {
+        return item.match(location.pathname);
+    }
     const normalize = (path) => path.replace(/index\.html$/, "");
-    return normalize(new URL(href, location.href).pathname) === normalize(location.pathname);
+    return normalize(new URL(item.href, SiteHeader.root).pathname) === normalize(location.pathname);
 };
 
 class SiteHeader extends HTMLElement {
+    /**
+     * サイトのルート（トップページのある場所）を、このスクリプト自身の URL から求める。
+     * ヘッダーは columns/xxx.html のような 1 つ下の階層のページにも入るため、
+     * ページからの相対パスだけではリンク先がずれてしまう。
+     * ここをトップレベルの変数にすると、通常の <script> はグローバルを共有するので
+     * 同じ名前を使う他のコンポーネントと衝突して壊れる。クラスの中に閉じ込めておく。
+     * site-footer.js にも同じ計算がある（共有するにはグローバル変数かモジュールが要るため、
+     * CODING_RULES.md 4.2 に従ってあえて重複させている）。
+     */
+    static root = (() => {
+        const scriptUrl = document.currentScript?.src ?? "";
+        return scriptUrl ? new URL("../../../", scriptUrl).href : new URL("./", location.href).href;
+    })();
+
+    /** サイトのルートからの相対パスを、どの階層のページでも通じる URL にする */
+    static url(path) {
+        return new URL(path, SiteHeader.root).href;
+    }
+
     connectedCallback() {
         if (this.dataset.ready === "true") return;
         this.dataset.ready = "true";
 
         this.append(HEADER_TEMPLATE.content.cloneNode(true));
+        this.setupLogo();
         this.renderNav();
         this.setupMenu();
+    }
+
+    /** ロゴをどのページからでもトップページへ戻す */
+    setupLogo() {
+        const logo = this.querySelector(".l-header__logo");
+        if (logo) {
+            logo.href = SiteHeader.url("./");
+        }
     }
 
     /** ナビの項目を組み立てる */
@@ -63,10 +102,10 @@ class SiteHeader extends HTMLElement {
         for (const item of NAV_ITEMS) {
             const link = document.createElement("a");
             link.className = "l-header__nav-link";
-            link.href = item.href;
+            link.href = SiteHeader.url(item.href);
             link.textContent = item.label;
 
-            if (isCurrentPage(item.href)) {
+            if (isCurrentPage(item)) {
                 link.setAttribute("aria-current", "page");
             }
 

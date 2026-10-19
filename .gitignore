@@ -1,6 +1,9 @@
 # 依存関係
 node_modules/
 
+# 生成物（npm run build が作る）
+_site/
+
 # OS が作るファイル
 Thumbs.db
 .DS_Store

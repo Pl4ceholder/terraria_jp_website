@@ -18,7 +18,7 @@ const ICON_PATHS = {
     x: "M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z",
 };
 
-// SNS リンク。本番の URL が決まったら href を差し替える（今はホームへの仮置き）。
+// SNS リンク。本番の URL が決まったら href を差し替える（今はサイトのトップへの仮置き）。
 const SOCIAL_LINKS = [
     { label: "YouTube", href: "./", icon: "youtube" },
     { label: "Discord", href: "./", icon: "discord" },
@@ -55,6 +55,25 @@ const createIcon = (name) => {
 };
 
 class SiteFooter extends HTMLElement {
+    /**
+     * サイトのルート（トップページのある場所）を、このスクリプト自身の URL から求める。
+     * フッターは columns/xxx.html のような 1 つ下の階層のページにも入るため、
+     * ページからの相対パスだけではリンク先がずれてしまう。
+     * ここをトップレベルの変数にすると、通常の <script> はグローバルを共有するので
+     * 同じ名前を使う他のコンポーネントと衝突して壊れる。クラスの中に閉じ込めておく。
+     * site-header.js にも同じ計算がある（共有するにはグローバル変数かモジュールが要るため、
+     * CODING_RULES.md 4.2 に従ってあえて重複させている）。
+     */
+    static root = (() => {
+        const scriptUrl = document.currentScript?.src ?? "";
+        return scriptUrl ? new URL("../../../", scriptUrl).href : new URL("./", location.href).href;
+    })();
+
+    /** サイトのルートからの相対パスを、どの階層のページでも通じる URL にする */
+    static url(path) {
+        return new URL(path, SiteFooter.root).href;
+    }
+
     connectedCallback() {
         if (this.dataset.ready === "true") return;
         this.dataset.ready = "true";
@@ -72,12 +91,15 @@ class SiteFooter extends HTMLElement {
         for (const { label, href, icon } of SOCIAL_LINKS) {
             const link = document.createElement("a");
             link.className = "c-social__link";
-            link.href = href;
+
+            // 外部リンクはそのまま、サイト内の仮置きは各ページの階層に合わせて解決する
+            const isExternal = /^https?:/.test(href);
+            link.href = isExternal ? href : SiteFooter.url(href);
             // アイコンだけのリンクなので、読み上げ用の名前を必ず付ける
             link.setAttribute("aria-label", label);
 
             // 外部リンクになったら別タブで開く（CODING_RULES.md 第 2 章）
-            if (/^https?:/.test(href)) {
+            if (isExternal) {
                 link.target = "_blank";
                 link.rel = "noopener noreferrer";
             }
