@@ -1,0 +1,129 @@
+/* ==========================================================================
+   mypage.css — p- : マイページ（/mypage）専用
+   ログイン前は案内だけ、ログイン後はプロフィールと、解放した実績の一覧を出す。
+   ========================================================================== */
+
+.p-mypage {
+    padding-block-end: var(--space-l);
+}
+
+/* ログイン前の案内 ------------------------------------------------------ */
+.p-mypage__login {
+    padding: var(--space-m) var(--space-s);
+    text-align: center;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.p-mypage__actions {
+    margin-block-end: var(--space-s);
+}
+
+/* 補足の文（ログイン前の説明と、「装着中」の説明で使う） */
+.p-mypage__note {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+/* 入っている人 ---------------------------------------------------------- */
+.p-mypage__profile {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-s);
+    align-items: center;
+    padding: var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.p-mypage__avatar {
+    flex: none;
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+}
+
+/* 名前と補足を縦に並べる */
+.p-mypage__who {
+    display: grid;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.p-mypage__name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+/* ログアウトは右端に寄せる */
+.p-mypage__logout {
+    margin-inline-start: auto;
+}
+
+/* 実績の欄 -------------------------------------------------------------- */
+.p-mypage__section {
+    margin-block-start: var(--space-m);
+}
+
+.p-mypage__heading {
+    margin-block-end: var(--space-s);
+    padding-block-end: var(--space-xs);
+    font-size: 1.2rem;
+    border-block-end: 1px solid var(--color-border);
+}
+
+.p-mypage__updated {
+    margin-block-end: var(--space-s);
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.p-mypage__warning {
+    color: var(--color-accent);
+}
+
+.p-mypage__empty {
+    padding-block: var(--space-m);
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
+/* 実績の並び。広い画面では 2 列にする */
+.p-mypage__list {
+    display: grid;
+    gap: var(--space-xs);
+}
+
+@media (width >= 720px) {
+    .p-mypage__list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.p-mypage__item {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    align-items: center;
+    padding: var(--space-xs) var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-s);
+}
+
+.p-mypage__achievement {
+    font-weight: 700;
+}
+
+/* いま称号にしているものは、一覧の中で見分けられるようにする */
+.p-mypage__badge {
+    margin-inline-start: auto;
+    padding: 0.1em 0.75em;
+    color: var(--color-primary);
+    font-size: 0.85rem;
+    border: 1px solid var(--color-primary-dark);
+    border-radius: var(--radius-pill);
+}

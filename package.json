@@ -14,6 +14,7 @@
         "check:events": "node scripts/check-events.mjs",
         "check:recruit": "node scripts/check-recruit.mjs",
         "check:achievements": "node scripts/check-achievements.mjs",
+        "check:mypage": "node scripts/check-mypage.mjs",
         "db:local": "wrangler d1 execute terraria-jp --local --file=worker/schema.sql",
         "db:local:seed": "wrangler d1 execute terraria-jp --local --file=worker/seed.sql",
         "db:remote": "wrangler d1 execute terraria-jp --remote --file=worker/schema.sql",

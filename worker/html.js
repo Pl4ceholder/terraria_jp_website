@@ -44,6 +44,35 @@ ${body}
 /** 日付（2026-10-19）を表示用（2026.10.19）にする */
 export const formatDate = (isoDate) => String(isoDate).replaceAll("-", ".");
 
+/** 日本時間（UTC+9、夏時間なし）の「2026.10.19 21:00」にする */
+export const formatJst = (iso) => {
+    const time = Date.parse(iso);
+    if (!Number.isFinite(time)) return "";
+
+    const jst = new Date(time + 9 * 60 * 60 * 1000);
+    const pad = (value) => String(value).padStart(2, "0");
+
+    return [
+        `${jst.getUTCFullYear()}.${pad(jst.getUTCMonth() + 1)}.${pad(jst.getUTCDate())}`,
+        `${pad(jst.getUTCHours())}:${pad(jst.getUTCMinutes())}`,
+    ].join(" ");
+};
+
+/** 「3 時間前」のように、いまからどれくらい前かを表す */
+export const formatAgo = (iso, now) => {
+    const time = Date.parse(iso);
+    if (!Number.isFinite(time)) return "";
+
+    const minutes = Math.floor((now - time) / 60000);
+    if (minutes < 1) return "たった今";
+    if (minutes < 60) return `${minutes} 分前`;
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} 時間前`;
+
+    return `${Math.floor(hours / 24)} 日前`;
+};
+
 /** 記事 1 件のページ */
 export const renderArticle = (column) => {
     const meta = [

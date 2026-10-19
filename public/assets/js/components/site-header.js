@@ -27,6 +27,11 @@ const NAV_ITEMS = [
         match: (path) => path.includes("/recruit"),
     },
     { label: "サーバー紹介", href: "./server.html" },
+    {
+        label: "マイページ",
+        href: "./mypage",
+        match: (path) => path.includes("/mypage"),
+    },
 ];
 
 const HEADER_TEMPLATE = document.createElement("template");

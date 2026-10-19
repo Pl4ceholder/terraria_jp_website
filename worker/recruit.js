@@ -11,7 +11,7 @@
 // ==========================================================================
 
 import { escapeHtml } from "./markdown.js";
-import { layout, SITE_NAME } from "./html.js";
+import { formatAgo, formatJst, layout, SITE_NAME } from "./html.js";
 
 export const RECRUIT_TITLE = "マルチ募集";
 
@@ -20,35 +20,6 @@ const STALE_MINUTES = 30;
 
 /** Discord のスレッドへのリンク。ログインしていなくても、開くと Discord が立ち上がる */
 const threadUrl = (guildId, id) => `https://discord.com/channels/${guildId}/${id}`;
-
-/** 日本時間（UTC+9、夏時間なし）の「2026.10.19 21:00」にする */
-const formatJst = (iso) => {
-    const time = Date.parse(iso);
-    if (!Number.isFinite(time)) return "";
-
-    const jst = new Date(time + 9 * 60 * 60 * 1000);
-    const pad = (value) => String(value).padStart(2, "0");
-
-    return [
-        `${jst.getUTCFullYear()}.${pad(jst.getUTCMonth() + 1)}.${pad(jst.getUTCDate())}`,
-        `${pad(jst.getUTCHours())}:${pad(jst.getUTCMinutes())}`,
-    ].join(" ");
-};
-
-/** 「3 時間前」のように、いまからどれくらい前に立てられたかを表す */
-const formatAgo = (iso, now) => {
-    const time = Date.parse(iso);
-    if (!Number.isFinite(time)) return "";
-
-    const minutes = Math.floor((now - time) / 60000);
-    if (minutes < 1) return "たった今";
-    if (minutes < 60) return `${minutes} 分前`;
-
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} 時間前`;
-
-    return `${Math.floor(hours / 24)} 日前`;
-};
 
 /** 「あと 5 時間」のように、Discord から流れるまでの残りを表す */
 const formatLeft = (ms) => {

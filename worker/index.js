@@ -18,6 +18,10 @@
 //   GET  /api/events            これからのイベント（お知らせページが取りに来る）
 //   POST /api/internal/events   Discord の bot からイベントを受け取る
 //   POST /api/internal/achievements  Discord の bot から実績を受け取る（マイページ用）
+//   GET  /mypage /mypage.html   マイページ（Discord でログインした人だけ）
+//   GET  /auth/discord          Discord の認証画面へ送る
+//   GET  /auth/discord/callback 認証から戻ってきた人に、入っている証を渡す
+//   POST /auth/logout           出る
 //
 // 投稿は誰でもできる。公開は運営が承認したものだけ。
 // 置き場所はすべて無料枠の範囲（Workers と D1）で使う。上限を超えたときは
@@ -25,7 +29,25 @@
 // ==========================================================================
 
 import { EVENT_LIST_SQL } from "./events.js";
-import { toAchievementRows } from "./achievements.js";
+import { ACHIEVEMENT_LIST_SQL, toAchievementRows } from "./achievements.js";
+import {
+    buildAuthorizeUrl,
+    buildStateCookie,
+    buildUserCookie,
+    clearStateCookie,
+    clearUserCookie,
+    exchangeCode,
+    fetchUser,
+    isConfigured,
+    isSecure,
+    isSameState,
+    issueUserSession,
+    makeState,
+    readUserSession,
+    redirectUriOf,
+} from "./auth.js";
+import { isSame, readCookie, signWithKey } from "./signing.js";
+import { renderAuthError, renderLogin, renderMypage, renderUnconfigured } from "./mypage.js";
 import {
     deadlineOf,
     RECRUIT_HIDDEN_SQL,
@@ -101,6 +123,15 @@ export default {
 
             const adminColumn = path.match(/^\/api\/admin\/columns\/([A-Za-z0-9-]+)$/);
             if (adminColumn) return await handleAdminAction(request, env, adminColumn[1]);
+
+            // マイページ（Discord でログインした人だけ）
+            if (path === "/mypage" || path === "/mypage.html" || path === "/mypage/") {
+                return await handleMypage(request, env);
+            }
+
+            if (path === "/auth/discord") return await handleDiscordAuth(request, env);
+            if (path === "/auth/discord/callback") return await handleDiscordCallback(request, env);
+            if (path === "/auth/logout") return await handleDiscordLogout(request);
 
             // Discord の bot から届く（サーバーどうしなので、Origin ではなく合言葉で確かめる）
             if (path === "/api/internal/recruitments") {
@@ -800,6 +831,113 @@ const handleAchievementSync = async (request, env) => {
     });
 };
 
+// マイページ（Discord でログインした人だけ） ---------------------------------
+
+/**
+ * マイページ。
+ *
+ * ログインの設定（DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET）が無いときは、準備中と伝えて
+ * 入口を閉じる（設定し忘れたまま、誰でも入れる状態にしない）。
+ */
+const handleMypage = async (request, env) => {
+    if (!isConfigured(env)) return htmlResponse(renderUnconfigured(), 503);
+
+    const user = await readUserSession(request, env);
+    if (!user) return htmlResponse(renderLogin());
+
+    const [list, state] = await Promise.all([
+        env.DB.prepare(ACHIEVEMENT_LIST_SQL).bind(user.id).all(),
+        env.DB.prepare(`SELECT value FROM sync_state WHERE key = 'achievements_synced_at'`).first(),
+    ]);
+
+    return htmlResponse(
+        renderMypage({
+            user,
+            achievements: list.results ?? [],
+            syncedAt: state?.value ?? "",
+        }),
+    );
+};
+
+/** Discord の認証画面へ送る。合言葉（state）をクッキーに入れて、戻ってきたときに見比べる */
+const handleDiscordAuth = async (request, env) => {
+    if (!isConfigured(env)) return authUnavailable();
+
+    const state = makeState();
+
+    return redirectTo(
+        buildAuthorizeUrl({
+            clientId: env.DISCORD_CLIENT_ID,
+            redirectUri: redirectUriOf(request),
+            state,
+        }),
+        [buildStateCookie(state, isSecure(request))],
+    );
+};
+
+/** 認証から戻ってきた人に、入っている証を渡してマイページへ送る */
+const handleDiscordCallback = async (request, env) => {
+    if (!isConfigured(env)) return authUnavailable();
+
+    const params = new URL(request.url).searchParams;
+    const secure = isSecure(request);
+
+    // 行き来の合言葉が合わないものは断る（他所から押し込まれたもの）
+    if (!isSameState(request, params)) {
+        return authFailed("state が合いませんでした。");
+    }
+
+    if (params.get("error")) {
+        return authFailed(`Discord 側で断られました（${params.get("error")}）`);
+    }
+
+    const code = params.get("code") ?? "";
+    if (!code) return authFailed("code がありませんでした。");
+
+    const token = await exchangeCode({
+        code,
+        clientId: env.DISCORD_CLIENT_ID,
+        clientSecret: env.DISCORD_CLIENT_SECRET,
+        redirectUri: redirectUriOf(request),
+    });
+    if (token.error) return authFailed(token.error, 502);
+
+    const found = await fetchUser({ accessToken: token.data.accessToken });
+    if (found.error) return authFailed(found.error, 502);
+
+    return redirectTo("/mypage", [
+        buildUserCookie(await issueUserSession(env, found.data), secure),
+        clearStateCookie(),
+    ]);
+};
+
+/** 出る。証を消して、マイページへ戻す */
+const handleDiscordLogout = (request) => {
+    if (request.method !== "POST") return methodNotAllowed("POST");
+    if (!isSameOrigin(request)) return forbidden();
+
+    return redirectTo("/mypage", [clearUserCookie(), clearStateCookie()]);
+};
+
+/** 移動のお知らせ。クッキーを複数付けられるように Headers を組み立てる */
+const redirectTo = (location, cookies = []) => {
+    const headers = new Headers({ location });
+    for (const cookie of cookies) headers.append("set-cookie", cookie);
+
+    return new Response(null, { status: 303, headers });
+};
+
+/** ログインの設定が無いとき。設定し忘れたまま、誰でも入れる状態にしない */
+const authUnavailable = () =>
+    jsonResponse({ ok: false, message: "ログインの設定がされていません。" }, 503);
+
+/** ログインの途中でうまくいかなかったとき。理由はログにだけ残す */
+const authFailed = (reason, status = 400) => {
+    console.error("ログインに失敗しました", reason);
+
+    return htmlResponse(renderAuthError(), status);
+};
+
 // 運営（承認） ---------------------------------------------------------------
 
 /**
@@ -984,43 +1122,7 @@ const isAdmin = async (request, env) => {
 };
 
 /** 証が本物かを見分けるための印。合言葉を鍵にして作る */
-const sign = async (env, message) => {
-    const key = await crypto.subtle.importKey(
-        "raw",
-        new TextEncoder().encode(env.ADMIN_PASSWORD ?? ""),
-        { name: "HMAC", hash: "SHA-256" },
-        false,
-        ["sign"],
-    );
-    const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
-
-    return [...new Uint8Array(signature)]
-        .map((byte) => byte.toString(16).padStart(2, "0"))
-        .join("");
-};
-
-/** 文字列が同じかどうか。全部を見比べて、時間で中身を推測されないようにする */
-const isSame = (a, b) => {
-    if (a.length !== b.length) return false;
-
-    let difference = 0;
-    for (let index = 0; index < a.length; index += 1) {
-        difference |= a.charCodeAt(index) ^ b.charCodeAt(index);
-    }
-
-    return difference === 0;
-};
-
-const readCookie = (request, name) => {
-    for (const part of (request.headers.get("cookie") ?? "").split(";")) {
-        const separator = part.indexOf("=");
-        if (separator !== -1 && part.slice(0, separator).trim() === name) {
-            return part.slice(separator + 1).trim();
-        }
-    }
-
-    return "";
-};
+const sign = (env, message) => signWithKey(`admin:${env.ADMIN_PASSWORD ?? ""}`, message);
 
 const buildSessionCookie = (value, secure) =>
     `${ADMIN_COOKIE}=${value}; Path=/; Max-Age=${SESSION_HOURS * 60 * 60}; HttpOnly; SameSite=Lax${
@@ -1085,8 +1187,9 @@ const jsonResponse = (data, status = 200, headers = {}) =>
         headers: { "content-type": "application/json; charset=utf-8", ...headers },
     });
 
-const htmlResponse = (html) =>
+const htmlResponse = (html, status = 200) =>
     new Response(html, {
+        status,
         headers: {
             "content-type": "text/html; charset=utf-8",
             // 投稿の承認・取り消しがすぐ見えるように、長く持たせない
