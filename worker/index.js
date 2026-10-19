@@ -17,6 +17,7 @@
 //   POST /api/internal/recruitments  Discord の bot から募集の一覧を受け取る
 //   GET  /api/events            これからのイベント（お知らせページが取りに来る）
 //   POST /api/internal/events   Discord の bot からイベントを受け取る
+//   POST /api/internal/achievements  Discord の bot から実績を受け取る（マイページ用）
 //
 // 投稿は誰でもできる。公開は運営が承認したものだけ。
 // 置き場所はすべて無料枠の範囲（Workers と D1）で使う。上限を超えたときは
@@ -24,6 +25,7 @@
 // ==========================================================================
 
 import { EVENT_LIST_SQL } from "./events.js";
+import { toAchievementRows } from "./achievements.js";
 import {
     deadlineOf,
     RECRUIT_HIDDEN_SQL,
@@ -80,6 +82,9 @@ const EVENT_DESCRIPTION_MAX = 2000;
 /** 終わりが無いイベントを出しておく猶予（これより前に始まったものは出さない） */
 const EVENT_GRACE_HOURS = 12;
 
+/** Discord の bot から実績を受け取るときの決まりごと（数の上限は achievements.js にある） */
+const ACHIEVEMENT_SYNC_MAX_BYTES = 128 * 1024;
+
 export default {
     async fetch(request, env) {
         const url = new URL(request.url);
@@ -104,6 +109,10 @@ export default {
 
             if (path === "/api/internal/events") {
                 return await handleEventSync(request, env);
+            }
+
+            if (path === "/api/internal/achievements") {
+                return await handleAchievementSync(request, env);
             }
 
             // お知らせページが取りに来る
@@ -734,6 +743,61 @@ const toCount = (value) => {
     const count = Number(value);
 
     return Number.isInteger(count) && count > 0 ? count : 0;
+};
+
+// Discord の実績（マイページ） -----------------------------------------------
+
+/**
+ * Discord の bot から、実績（誰が何を解放したか）を受け取る。
+ *
+ * 募集・イベントと同じで、届いた内容で丸ごと入れ替える。何度届いても同じ結果になる。
+ * 実績の付与は Discord で手動で行うので、届くのは 30 分に 1 回ほど（cogs/sync.py）。
+ * 書き込みを無駄に増やさないための間隔で、サイト側はこれを気にしない。
+ */
+const handleAchievementSync = async (request, env) => {
+    if (request.method !== "POST") return methodNotAllowed("POST");
+
+    if (!env.SYNC_SECRET) {
+        return jsonResponse({ ok: false, message: "同期の設定がされていません。" }, 503);
+    }
+
+    if (!isSame(request.headers.get(SYNC_SECRET_HEADER) ?? "", env.SYNC_SECRET)) {
+        return jsonResponse({ ok: false, message: "受け付けられませんでした。" }, 401);
+    }
+
+    const payload = await readJson(request, ACHIEVEMENT_SYNC_MAX_BYTES);
+    if (payload.error) return payload.error;
+
+    const now = new Date().toISOString();
+    const rows = toAchievementRows(payload.data, now);
+    if (rows.error) return jsonResponse({ ok: false, message: rows.error }, 400);
+
+    await env.DB.batch([
+        env.DB.prepare(`DELETE FROM achievements`),
+        env.DB.prepare(`DELETE FROM member_achievements`),
+        ...rows.data.master.map((row) =>
+            env.DB.prepare(
+                `INSERT INTO achievements (id, name, position, synced_at)
+                 VALUES (?1, ?2, ?3, ?4)`,
+            ).bind(row.id, row.name, row.position, row.syncedAt),
+        ),
+        ...rows.data.members.map((row) =>
+            env.DB.prepare(
+                `INSERT INTO member_achievements (user_id, unlocked, title, synced_at)
+                 VALUES (?1, ?2, ?3, ?4)`,
+            ).bind(row.userId, row.unlocked, row.title, row.syncedAt),
+        ),
+        env.DB.prepare(
+            `INSERT INTO sync_state (key, value) VALUES ('achievements_synced_at', ?1)
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+        ).bind(now),
+    ]);
+
+    return jsonResponse({
+        ok: true,
+        achievements: rows.data.master.length,
+        members: rows.data.members.length,
+    });
 };
 
 // 運営（承認） ---------------------------------------------------------------

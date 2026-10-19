@@ -155,6 +155,35 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS idx_events_start
     ON events (start_at);
 
+-- 実績（Discord の「実績ロール」）。
+--
+-- 名前は Discord のロール名をそのまま使う（説明やカテゴリは Discord 側にも無い）。
+-- 「解放済み」は Discord のロールには出ない（ロールは、いまつけている称号 1 つだけ）ので、
+-- bot が Redis から集めて届ける。届いた内容で丸ごと入れ替える。
+CREATE TABLE IF NOT EXISTS achievements (
+    -- Discord のロール ID
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL DEFAULT '',
+    -- 並び順（Discord 側の定義の順）
+    position INTEGER NOT NULL DEFAULT 0,
+    -- 最後に bot から届いた時刻
+    synced_at TEXT NOT NULL
+);
+
+-- 誰がどの実績を解放したか。1 人 1 行。
+--
+-- 「いつ解放したか」は Discord 側にも記録が無いので持たない。
+-- 解放済みの ID はカンマでつないで持つ（人数ぶんだけ書けばよいので、書き込みが増えない）。
+CREATE TABLE IF NOT EXISTS member_achievements (
+    -- Discord のユーザー ID
+    user_id TEXT PRIMARY KEY,
+    -- 解放済みの実績 ID（例: "1543500048245981275,1543500112456585267"）
+    unlocked TEXT NOT NULL DEFAULT '',
+    -- いま称号としてつけている実績 ID（つけていなければ空）
+    title TEXT NOT NULL DEFAULT '',
+    synced_at TEXT NOT NULL
+);
+
 -- 同期の状態を持つ小さな置き場。
 -- 募集が 1 件も無いときでも「最後にいつ届いたか」を出せるようにする。
 CREATE TABLE IF NOT EXISTS sync_state (
