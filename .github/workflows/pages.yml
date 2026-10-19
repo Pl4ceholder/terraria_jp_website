@@ -1,0 +1,71 @@
+name: コラムのビルドと公開
+
+# コラム（columns/*.md）を HTML に組み立てて GitHub Pages へ公開する。
+#   - Pull Request: 組み立てが通るかだけを確認する（公開はしない）
+#   - main へ push: 組み立てて公開する
+#   - develop へ push: 組み立てが通るかだけを確認する
+#
+# 公開の準備（1 回だけ必要）:
+#   リポジトリの Settings → Pages → Build and deployment で
+#   Source を「GitHub Actions」にする。
+#
+# 記事の書き方は columns/README.md を参照。
+
+on:
+    pull_request:
+    push:
+        branches:
+            - main
+            - develop
+
+permissions:
+    contents: read
+    pages: write
+    id-token: write
+
+# 公開は同時に 1 つだけにする（古いビルドで上書きしない）
+concurrency:
+    group: pages
+    cancel-in-progress: false
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - name: リポジトリを取得する
+              uses: actions/checkout@v4
+
+            - name: Node.js を用意する
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: npm
+
+            - name: 依存関係をインストールする
+              run: npm ci
+
+            - name: コラムを組み立てる
+              run: npm run build
+
+            - name: GitHub Pages の設定を読み込む
+              if: github.ref == 'refs/heads/main'
+              uses: actions/configure-pages@v5
+
+            - name: 公開するファイルをまとめる
+              if: github.ref == 'refs/heads/main'
+              uses: actions/upload-pages-artifact@v3
+              with:
+                  path: _site
+
+    deploy:
+        # main に入ったときだけ公開する
+        if: github.ref == 'refs/heads/main'
+        needs: build
+        runs-on: ubuntu-latest
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        steps:
+            - name: GitHub Pages へ公開する
+              id: deployment
+              uses: actions/deploy-pages@v4
