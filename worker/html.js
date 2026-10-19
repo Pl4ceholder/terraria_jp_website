@@ -67,10 +67,8 @@ export const renderArticle = (column) => {
             </header>
 
             <div class="l-container l-container--narrow">
-                <article class="p-column">
-                    <div class="p-column__body">
+                <article class="c-prose">
 ${column.html}
-                    </div>
                 </article>
             </div>`;
 
@@ -110,6 +108,12 @@ ${items}
                 <div class="l-container l-container--narrow">
                     <p class="c-page-header__lead">${SITE_NAME} のコラム</p>
                     <h1 class="c-page-header__title">${COLUMNS_TITLE}</h1>
+                    <p class="c-page-header__text">
+                        Terraria の遊び方や、サーバーでの出来事を書いた読み物です。誰でも書けます。
+                    </p>
+                    <p class="c-page-header__actions">
+                        <a class="c-button" href="/post.html">コラムを書く</a>
+                    </p>
                 </div>
             </header>
 

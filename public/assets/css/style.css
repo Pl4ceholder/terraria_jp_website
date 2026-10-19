@@ -6,14 +6,17 @@
    3. base       要素単位の基本スタイル
    4. layout      l-（ヘッダー・フッター・コンテナ）
    5. components  c-（ボタンなど使い回す部品）
-   6. pages       p-（ページごとの見た目）
+   6. utilities   u-（1 つのことだけをする小さな部品）
+   7. pages       p-（ページごとの見た目）
    ========================================================================== */
 @import url("./common/variables.css");
 @import url("./common/reset.css");
 @import url("./common/base.css");
 @import url("./common/layout.css");
 @import url("./common/components.css");
+@import url("./common/utilities.css");
 @import url("./pages/home.css");
 @import url("./pages/server.css");
 @import url("./pages/news.css");
 @import url("./pages/columns.css");
+@import url("./pages/post.css");

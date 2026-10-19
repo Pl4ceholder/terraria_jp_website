@@ -32,3 +32,10 @@ small {
     font-size: 0.85em;
     color: var(--color-text-muted);
 }
+
+/* 文章中に出てくるコマンドや書き方（## 見出し など） */
+code {
+    padding: 0.1em 0.4em;
+    background-color: var(--color-surface-alt);
+    border-radius: var(--radius-s);
+}

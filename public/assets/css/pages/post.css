@@ -1,0 +1,158 @@
+/* ==========================================================================
+   post.css — p- : コラムを書くページ（post.html）専用
+   ========================================================================== */
+
+.p-post {
+    display: grid;
+    gap: var(--space-m);
+    padding-block-end: var(--space-l);
+}
+
+.p-post__fields {
+    display: grid;
+    gap: var(--space-s);
+}
+
+.p-post__field {
+    display: grid;
+    gap: var(--space-xs);
+}
+
+.p-post__label {
+    font-weight: 700;
+}
+
+.p-post__hint {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+/* 入力欄 -------------------------------------------------------------- */
+
+.p-post__input,
+.p-post__textarea {
+    width: 100%;
+    padding: var(--space-xs) var(--space-s);
+    color: var(--color-text);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-s);
+}
+
+.p-post__textarea {
+    min-height: 20rem;
+    line-height: 1.8;
+    resize: vertical;
+}
+
+.p-post__input:focus-visible,
+.p-post__textarea:focus-visible {
+    border-color: var(--color-primary);
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+}
+
+/* 本文と下見の並び ---------------------------------------------------- */
+
+.p-post__workspace {
+    display: grid;
+    gap: var(--space-s);
+}
+
+.p-post__writing {
+    display: grid;
+    gap: var(--space-s);
+}
+
+.p-post__preview {
+    padding: var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.p-post__preview-title {
+    margin-block-end: var(--space-s);
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+/* 画像を追加 ---------------------------------------------------------- */
+
+.p-post__tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-s);
+    align-items: center;
+}
+
+.p-post__file-button {
+    flex: none;
+    padding: 0.5em 1.25em;
+    font-size: 0.95rem;
+}
+
+/* 見た目は label 側（.p-post__file-button）が持ち、元の入力は隠している。
+   キーボードで選んだときに、どこの操作中かが分かるように線を出す。 */
+.p-post__file:focus-visible + .p-post__file-button {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/* 送る ---------------------------------------------------------------- */
+
+.p-post__message {
+    color: var(--color-text-muted);
+}
+
+.p-post__message--error {
+    color: var(--color-danger);
+}
+
+.p-post__message--success {
+    color: var(--color-primary);
+}
+
+.p-post__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-s);
+    align-items: center;
+}
+
+.p-post__done {
+    padding: var(--space-m) var(--space-s);
+    text-align: center;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.p-post__done-title {
+    font-size: 1.3rem;
+}
+
+.p-post__done-text {
+    margin-block-start: var(--space-s);
+    color: var(--color-text-muted);
+}
+
+.p-post__done-actions {
+    margin-block-start: var(--space-m);
+}
+
+/* 広い画面では、本文と下見を左右に並べる ------------------------------ */
+@media (width >= 900px) {
+    .p-post__workspace {
+        grid-template-columns: 1fr 1fr;
+        align-items: start;
+    }
+
+    /* 下見は本文を書いている間ずっと見えるようにする */
+    .p-post__preview {
+        position: sticky;
+        inset-block-start: calc(var(--header-height) + var(--space-s));
+        max-height: calc(100vh - var(--header-height) - var(--space-l));
+        overflow-y: auto;
+    }
+}

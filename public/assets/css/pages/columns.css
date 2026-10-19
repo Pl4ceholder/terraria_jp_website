@@ -1,9 +1,8 @@
 /* ==========================================================================
-   columns.css — p- : コラム（columns.html と columns/<名前>.html）専用
-   記事の本文は Markdown から生成する（tools/build-columns.mjs）
+   columns.css — p- : コラムの一覧（columns.html）専用
+   記事の本文の見た目は common/components.css の c-prose
+   （投稿フォームの下見でも同じものを使うため、共通部品に置いている）
    ========================================================================== */
-
-/* 一覧（columns.html） ------------------------------------------------- */
 
 .p-columns-list {
     padding-block-end: var(--space-l);
@@ -52,102 +51,4 @@
     .p-columns-list__author {
         margin-inline-start: 0;
     }
-}
-
-/* 記事の本文（columns/<名前>.html） ----------------------------------- */
-
-.p-column__body {
-    padding-block-end: var(--space-l);
-}
-
-/*
- * 本文は Markdown から生成するのでクラスを付けられない。
- * ここだけは子孫セレクタで要素に当てる（CODING_RULES.md 3.3 の例外）。
- */
-
-/* 要素どうしの縦の空きは、本文全体でこの 1 か所にまとめる */
-.p-column__body > * + * {
-    margin-block-start: var(--space-s);
-}
-
-.p-column__body h2 {
-    margin-block-start: var(--space-m);
-    padding-block-end: var(--space-xs);
-    font-size: 1.4rem;
-    border-block-end: 1px solid var(--color-border);
-}
-
-.p-column__body h3 {
-    margin-block-start: var(--space-m);
-    font-size: 1.15rem;
-}
-
-.p-column__body h4 {
-    margin-block-start: var(--space-m);
-}
-
-/* リセットで消えている箇条書きの見た目を戻す */
-.p-column__body ul,
-.p-column__body ol {
-    padding-inline-start: 1.5em;
-}
-
-.p-column__body ul {
-    list-style: disc;
-}
-
-.p-column__body ol {
-    list-style: decimal;
-}
-
-.p-column__body li + li {
-    margin-block-start: var(--space-xs);
-}
-
-/* 本文中のリンクは下線で見分けられるようにする（色は全体のルールに任せる） */
-.p-column__body a {
-    text-decoration: underline;
-    text-underline-offset: 0.2em;
-}
-
-.p-column__body blockquote {
-    padding-inline-start: var(--space-s);
-    color: var(--color-text-muted);
-    border-inline-start: 3px solid var(--color-border);
-}
-
-.p-column__body code {
-    padding: 0.1em 0.4em;
-    background-color: var(--color-surface-alt);
-    border-radius: var(--radius-s);
-}
-
-.p-column__body pre {
-    padding: var(--space-s);
-    overflow-x: auto;
-    background-color: var(--color-surface-alt);
-    border-radius: var(--radius-s);
-}
-
-/* コードブロックの中は、行ごとに背景を塗り直さない */
-.p-column__body pre code {
-    padding: 0;
-    background-color: transparent;
-}
-
-.p-column__body table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.p-column__body th,
-.p-column__body td {
-    padding: var(--space-xs) var(--space-s);
-    text-align: start;
-    border: 1px solid var(--color-border);
-}
-
-.p-column__body hr {
-    border: 0;
-    border-block-start: 1px solid var(--color-border);
 }
