@@ -21,6 +21,21 @@
                 </div>
             </header>
 
+            <!--
+                これからのイベント。Discord の「イベント」に立てたものが自動で出る。
+                中身は assets/js/pages/news.js が /api/events から取って入れる。
+                1 件も無いとき・取れなかったときは、かたまりごと出さない（hidden のまま）。
+            -->
+            <section class="p-news-events" data-news-events hidden>
+                <div class="l-container l-container--narrow">
+                    <h2 class="p-news-events__title">これからのイベント</h2>
+                    <ul class="p-news-events__list" data-news-events-list></ul>
+                    <p class="p-news-events__note">
+                        Discord の「イベント」に立てたものが、そのまま出ています。
+                    </p>
+                </div>
+            </section>
+
             <div class="l-container l-container--narrow">
                 <div class="p-news-list">
                     <!--
@@ -73,5 +88,6 @@
 
         <script src="assets/js/components/site-header.js" defer></script>
         <script src="assets/js/components/site-footer.js" defer></script>
+        <script src="assets/js/pages/news.js" defer></script>
     </body>
 </html>

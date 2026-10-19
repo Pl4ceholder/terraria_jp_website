@@ -113,6 +113,36 @@ CREATE TABLE IF NOT EXISTS recruitments (
 CREATE INDEX IF NOT EXISTS idx_recruitments_started
     ON recruitments (started_at DESC);
 
+-- これからの Discord のイベント（サーバーの「イベント」で立てたもの）。
+--
+-- 募集と同じで、持ち主は Discord 側。届いた内容で丸ごと入れ替える。
+-- 終わったイベントの同期はしない（Discord が終わったものを返さなくなるので、
+-- 次に届いたときに入れ替わって消える）。
+CREATE TABLE IF NOT EXISTS events (
+    -- Discord のイベント ID
+    id TEXT PRIMARY KEY,
+    guild_id TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    -- 場所（外部のイベントなら場所の名前、ボイスならチャンネル名）
+    location TEXT NOT NULL DEFAULT '',
+    -- イベントの絵（あれば）
+    cover_url TEXT NOT NULL DEFAULT '',
+    -- Discord のイベントページ
+    url TEXT NOT NULL DEFAULT '',
+    -- 参加を表明している人数
+    user_count INTEGER NOT NULL DEFAULT 0,
+    -- 始まりの時刻。終わりは無いこともある
+    start_at TEXT NOT NULL,
+    end_at TEXT,
+    -- 最後に bot から届いた時刻
+    synced_at TEXT NOT NULL
+);
+
+-- 「これから」を新しい順ではなく、始まる順に引く
+CREATE INDEX IF NOT EXISTS idx_events_start
+    ON events (start_at);
+
 -- 同期の状態を持つ小さな置き場。
 -- 募集が 1 件も無いときでも「最後にいつ届いたか」を出せるようにする。
 CREATE TABLE IF NOT EXISTS sync_state (

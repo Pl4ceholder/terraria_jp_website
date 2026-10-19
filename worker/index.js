@@ -15,6 +15,8 @@
 //   POST /api/admin/...         運営の操作（承認・削除）
 //   GET  /recruit /recruit.html マルチ募集の一覧（Discord の写し）
 //   POST /api/internal/recruitments  Discord の bot から募集の一覧を受け取る
+//   GET  /api/events            これからのイベント（お知らせページが取りに来る）
+//   POST /api/internal/events   Discord の bot からイベントを受け取る
 //
 // 投稿は誰でもできる。公開は運営が承認したものだけ。
 // 置き場所はすべて無料枠の範囲（Workers と D1）で使う。上限を超えたときは
@@ -61,6 +63,16 @@ const RECRUIT_MAX = 100;
 const RECRUIT_TEXT_MAX = 300;
 const RECRUIT_MESSAGE_MAX = 1000;
 
+/** Discord の bot からイベントを受け取るときの決まりごと */
+const EVENT_SYNC_MAX_BYTES = 128 * 1024;
+const EVENT_MAX = 100;
+const EVENT_NAME_MAX = 200;
+const EVENT_LOCATION_MAX = 200;
+const EVENT_URL_MAX = 500;
+const EVENT_DESCRIPTION_MAX = 2000;
+/** 終わったイベントを出しっぱなしにしないための猶予（この時間を過ぎたら出さない） */
+const EVENT_GRACE_HOURS = 12;
+
 export default {
     async fetch(request, env) {
         const url = new URL(request.url);
@@ -81,6 +93,15 @@ export default {
             // Discord の bot から届く（サーバーどうしなので、Origin ではなく合言葉で確かめる）
             if (path === "/api/internal/recruitments") {
                 return await handleRecruitSync(request, env);
+            }
+
+            if (path === "/api/internal/events") {
+                return await handleEventSync(request, env);
+            }
+
+            // お知らせページが取りに来る
+            if (path === "/api/events") {
+                return await handleEventList(env);
             }
 
             if (path === "/columns" || path === "/columns.html" || path === "/columns/") {
@@ -539,6 +560,153 @@ const toIso = (value, fallback) => {
     const time = Date.parse(String(value ?? ""));
 
     return Number.isFinite(time) ? new Date(time).toISOString() : fallback;
+};
+
+// Discord のイベント ---------------------------------------------------------
+
+/**
+ * Discord の bot から、これからのイベントを受け取る。
+ *
+ * 募集と同じ考え方。届いた内容で丸ごと入れ替えるので、何度届いても同じ結果になる。
+ * 終わったイベントは Discord が返さなくなるので、次の入れ替えで自然に消える。
+ */
+const handleEventSync = async (request, env) => {
+    if (request.method !== "POST") return methodNotAllowed("POST");
+
+    if (!env.SYNC_SECRET) {
+        return jsonResponse({ ok: false, message: "同期の設定がされていません。" }, 503);
+    }
+
+    if (!isSame(request.headers.get(SYNC_SECRET_HEADER) ?? "", env.SYNC_SECRET)) {
+        return jsonResponse({ ok: false, message: "受け付けられませんでした。" }, 401);
+    }
+
+    const payload = await readJson(request, EVENT_SYNC_MAX_BYTES);
+    if (payload.error) return payload.error;
+
+    const now = new Date().toISOString();
+    const rows = toEventRows(payload.data, now);
+    if (rows.error) return jsonResponse({ ok: false, message: rows.error }, 400);
+
+    await env.DB.batch([
+        env.DB.prepare(`DELETE FROM events`),
+        ...rows.data.map((row) =>
+            env.DB.prepare(
+                `INSERT INTO events
+                     (id, guild_id, name, description, location, cover_url, url,
+                      user_count, start_at, end_at, synced_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
+            ).bind(
+                row.id,
+                row.guildId,
+                row.name,
+                row.description,
+                row.location,
+                row.coverUrl,
+                row.url,
+                row.userCount,
+                row.startAt,
+                row.endAt,
+                row.syncedAt,
+            ),
+        ),
+        env.DB.prepare(
+            `INSERT INTO sync_state (key, value) VALUES ('events_synced_at', ?1)
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+        ).bind(now),
+    ]);
+
+    return jsonResponse({ ok: true, count: rows.data.length });
+};
+
+/** Discord から届いた内容を、保存できる形に整える。おかしければメッセージを返す */
+const toEventRows = (payload, syncedAt) => {
+    const list = Array.isArray(payload?.events) ? payload.events : null;
+    if (!list) return { error: "イベントの一覧が入っていません。" };
+
+    const guildId = trimTo(payload?.guildId, 32);
+    if (!guildId) return { error: "Discord のサーバー ID が入っていません。" };
+    if (list.length > EVENT_MAX) return { error: `イベントは一度に ${EVENT_MAX} 件までです。` };
+
+    const data = [];
+    const seen = new Set();
+
+    for (const item of list) {
+        const id = trimTo(item?.id, 32);
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+
+        // 始まる時刻が分からないものは、いつ出すのか決められないので入れない
+        const startAt = toIso(item?.startAt, "");
+        if (!startAt) continue;
+
+        data.push({
+            id,
+            guildId,
+            name: trimTo(item?.name, EVENT_NAME_MAX),
+            description: trimTo(item?.description, EVENT_DESCRIPTION_MAX),
+            location: trimTo(item?.location, EVENT_LOCATION_MAX),
+            coverUrl: trimTo(item?.coverUrl, EVENT_URL_MAX),
+            url: trimTo(item?.url, EVENT_URL_MAX),
+            userCount: toCount(item?.userCount),
+            startAt,
+            endAt: toIso(item?.endAt, null),
+            syncedAt,
+        });
+    }
+
+    return { data };
+};
+
+/** これからのイベント。お知らせページが取りに来る */
+const handleEventList = async (env) => {
+    const now = Date.now();
+    const graceIso = new Date(now - EVENT_GRACE_HOURS * 60 * 60 * 1000).toISOString();
+
+    const [list, state] = await Promise.all([
+        env.DB.prepare(
+            `SELECT id, name, description, location, cover_url, url, user_count, start_at, end_at
+               FROM events
+              WHERE (end_at IS NULL OR end_at >= ?1)
+                AND start_at >= ?2
+              ORDER BY start_at
+              LIMIT ?3`,
+        )
+            .bind(new Date(now).toISOString(), graceIso, EVENT_MAX)
+            .all(),
+        env.DB.prepare(`SELECT value FROM sync_state WHERE key = 'events_synced_at'`).first(),
+    ]);
+
+    return jsonResponse(
+        {
+            ok: true,
+            syncedAt: state?.value ?? "",
+            events: (list.results ?? []).map(toEvent),
+        },
+        200,
+        // イベントが増えたときに 1 分以内で見えるようにする
+        { "cache-control": "public, max-age=60" },
+    );
+};
+
+/** DB の 1 行を、お知らせページに渡す形にする */
+const toEvent = (row) => ({
+    id: row.id,
+    name: row.name ?? "",
+    description: row.description ?? "",
+    location: row.location ?? "",
+    coverUrl: row.cover_url ?? "",
+    url: row.url ?? "",
+    userCount: row.user_count ?? 0,
+    startAt: row.start_at ?? "",
+    endAt: row.end_at ?? "",
+});
+
+/** 人数のような数を、安全な整数にする */
+const toCount = (value) => {
+    const count = Number(value);
+
+    return Number.isInteger(count) && count > 0 ? count : 0;
 };
 
 // 運営（承認） ---------------------------------------------------------------

@@ -59,3 +59,59 @@
     padding-block-end: var(--space-s);
     color: var(--color-text-muted);
 }
+
+/* これからのイベント（Discord から自動で出る） -------------------------- */
+.p-news-events {
+    padding-block-end: var(--space-m);
+}
+
+.p-news-events__title {
+    font-size: 1.1rem;
+}
+
+.p-news-events__list {
+    display: grid;
+    gap: var(--space-s);
+    margin-block-start: var(--space-s);
+}
+
+/* 1 件分。左の線で「お知らせ本体」と区別する */
+.p-news-events__item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-inline-start: 3px solid var(--color-primary);
+    border-radius: var(--radius);
+}
+
+.p-news-events__when {
+    color: var(--color-primary);
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.p-news-events__name {
+    font-weight: 700;
+}
+
+/* 説明は、書かれた改行をそのまま活かす */
+.p-news-events__description {
+    white-space: pre-wrap;
+}
+
+.p-news-events__location,
+.p-news-events__note {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.p-news-events__note {
+    margin-block-start: var(--space-xs);
+}
+
+.p-news-events__actions {
+    padding-block-start: var(--space-xs);
+}
