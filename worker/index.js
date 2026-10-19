@@ -6,15 +6,17 @@
 //   2. それ以外の動くページと API …… ここで組み立てて返す
 //
 // 動くページ・API は次のとおり。
-//   GET  /columns.html          コラムの一覧（公開されたものだけ）
+//   GET  /columns /columns.html コラムの一覧（公開されたものだけ）
 //   GET  /columns/<slug>.html   コラムの記事
-//   GET  /img/<key>             記事の画像（R2 から返す）
+//   GET  /img/<id>              記事の画像（D1 から返す）
 //   POST /api/preview           書いた文章の下見（Markdown → HTML）
 //   POST /api/columns           コラムの投稿（承認待ちで保存）
 //   POST /api/images            画像のアップロード
 //   POST /api/admin/...         運営の操作（承認・削除）
 //
 // 投稿は誰でもできる。公開は運営が承認したものだけ。
+// 置き場所はすべて無料枠の範囲（Workers と D1）で使う。上限を超えたときは
+// 「エラーになる」だけで、料金は発生しない。詳しくは README.md を参照。
 // ==========================================================================
 
 import { renderMarkdown, buildExcerpt } from "./markdown.js";
@@ -33,14 +35,12 @@ const LIMITS = {
 /** 同じ人が 1 時間に投稿できる回数（いたずら対策） */
 const POSTS_PER_HOUR = 5;
 
-/** 画像の条件 */
-const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
-const IMAGE_EXTENSIONS = {
-    "image/png": "png",
-    "image/jpeg": "jpg",
-    "image/gif": "gif",
-    "image/webp": "webp",
-};
+/** 画像の条件（D1 の 1 行は 2MB まで。余裕をみて 1MB にする） */
+const IMAGE_MAX_BYTES = 1 * 1024 * 1024;
+const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+
+/** 画像をためておける合計。D1 無料枠（データベース 1 つ 500MB）に近づく前に断る */
+const IMAGE_TOTAL_MAX_BYTES = 400 * 1024 * 1024;
 
 /** 同じ人から 1 時間に上がる画像の数（置き場所を荒らされないため） */
 const IMAGES_PER_HOUR = 20;
@@ -68,7 +68,7 @@ export default {
             const adminColumn = path.match(/^\/api\/admin\/columns\/([A-Za-z0-9-]+)$/);
             if (adminColumn) return await handleAdminAction(request, env, adminColumn[1]);
 
-            if (path === "/columns.html" || path === "/columns/") {
+            if (path === "/columns" || path === "/columns.html" || path === "/columns/") {
                 return await handleColumnList(env);
             }
 
@@ -274,19 +274,23 @@ const buildSlug = (source) => {
 
 // 画像 ----------------------------------------------------------------------
 
-/** 画像を受け取って R2 に置く */
+/** 画像を受け取って D1 に入れる */
 const handleUpload = async (request, env) => {
     if (request.method !== "POST") return methodNotAllowed("POST");
 
-    const form = await request.formData();
+    const form = await request.formData().catch(() => null);
+
+    if (!form) {
+        return jsonResponse({ ok: false, message: "画像を受け取れませんでした。" }, 400);
+    }
+
     const file = form.get("image");
 
     if (!file || typeof file === "string") {
         return jsonResponse({ ok: false, message: "画像が選ばれていません。" }, 400);
     }
 
-    const extension = IMAGE_EXTENSIONS[file.type];
-    if (!extension) {
+    if (!IMAGE_TYPES.has(file.type)) {
         return jsonResponse(
             { ok: false, message: "PNG / JPEG / GIF / WebP の画像を選んでください。" },
             415,
@@ -294,7 +298,7 @@ const handleUpload = async (request, env) => {
     }
 
     if (file.size > IMAGE_MAX_BYTES) {
-        return jsonResponse({ ok: false, message: "画像は 5MB までです。" }, 413);
+        return jsonResponse({ ok: false, message: "画像は 1MB までです。" }, 413);
     }
 
     const ipHash = await hashIp(request, env);
@@ -315,11 +319,24 @@ const handleUpload = async (request, env) => {
         );
     }
 
-    const key = `columns/${new Date().toISOString().slice(0, 7)}/${crypto
-        .randomUUID()
-        .replace(/-/g, "")}.${extension}`;
+    const now = new Date().toISOString();
+    const stored = await env.DB.prepare(
+        `SELECT COALESCE(SUM(size), 0) AS total FROM images`,
+    ).first();
 
-    // 数えた記録を残す。ついでに 1 日より古い記録は片付ける。
+    if ((stored?.total ?? 0) + file.size > IMAGE_TOTAL_MAX_BYTES) {
+        return jsonResponse(
+            {
+                ok: false,
+                message: "画像を置ける場所がいっぱいです。お手数ですが、運営にご連絡ください。",
+            },
+            507,
+        );
+    }
+
+    const id = crypto.randomUUID().replace(/-/g, "");
+
+    // 画像と、数えた記録を入れる。ついでに 1 日より古い記録は片付ける。
     await env.DB.batch([
         env.DB.prepare(`DELETE FROM uploads WHERE created_at < ?1`).bind(
             new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
@@ -327,29 +344,34 @@ const handleUpload = async (request, env) => {
         env.DB.prepare(`INSERT INTO uploads (id, ip_hash, created_at) VALUES (?1, ?2, ?3)`).bind(
             crypto.randomUUID(),
             ipHash,
-            new Date().toISOString(),
+            now,
         ),
+        env.DB.prepare(
+            `INSERT INTO images (id, content_type, size, data, created_at) VALUES (?1, ?2, ?3, ?4, ?5)`,
+        ).bind(id, file.type, file.size, await file.arrayBuffer(), now),
     ]);
 
-    await env.IMAGES.put(key, await file.arrayBuffer(), {
-        httpMetadata: { contentType: file.type },
-    });
-
-    return jsonResponse({ ok: true, url: `/img/${key}` });
+    return jsonResponse({ ok: true, url: `/img/${id}` });
 };
 
-/** 記事で使う画像を返す */
-const handleImage = async (key, env) => {
-    const object = await env.IMAGES.get(key);
-    if (!object) {
+/** D1 は BLOB を数値の配列で返す。ArrayBuffer で来ても扱えるようにしておく */
+const toBytes = (data) =>
+    data instanceof ArrayBuffer ? new Uint8Array(data) : Uint8Array.from(data);
+
+/** 記事で使う画像を D1 から返す */
+const handleImage = async (id, env) => {
+    const row = await env.DB.prepare(`SELECT content_type, data FROM images WHERE id = ?1`)
+        .bind(id)
+        .first();
+
+    if (!row) {
         return new Response("Not found", { status: 404 });
     }
 
-    return new Response(object.body, {
+    return new Response(toBytes(row.data), {
         headers: {
-            "content-type": object.httpMetadata?.contentType ?? "application/octet-stream",
+            "content-type": row.content_type,
             "cache-control": "public, max-age=31536000, immutable",
-            etag: object.httpEtag,
         },
     });
 };

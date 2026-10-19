@@ -41,6 +41,21 @@ CREATE INDEX IF NOT EXISTS idx_columns_published
 CREATE INDEX IF NOT EXISTS idx_columns_ip
     ON columns (ip_hash, created_at);
 
+-- 記事で使う画像。
+-- 有料の置き場所（R2）は使わず、記事と同じ D1 に入れる。
+-- D1 の無料枠は「上限を超えたら書き込みがエラーになるだけ」で料金は発生しない。
+-- 1 行に入るのは 2MB まで、データベース 1 つは 500MB まで。
+CREATE TABLE IF NOT EXISTS images (
+    id TEXT PRIMARY KEY,
+    -- image/png など
+    content_type TEXT NOT NULL,
+    -- バイト数。合計を数えて、いっぱいになる前に断るために持つ。
+    size INTEGER NOT NULL,
+    -- 画像そのもの
+    data BLOB NOT NULL,
+    created_at TEXT NOT NULL
+);
+
 -- 画像のアップロードの記録。
 -- 誰でも投稿できるぶん、置き場所を荒らされないように回数を数える。
 CREATE TABLE IF NOT EXISTS uploads (

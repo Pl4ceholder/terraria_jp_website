@@ -21,7 +21,7 @@
     const PREVIEW_DELAY = 400;
 
     /** 画像の条件。サーバー側と揃えておく */
-    const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+    const IMAGE_MAX_BYTES = 1 * 1024 * 1024;
     const IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 
     const pick = (name) => form.querySelector(`[data-post-${name}]`);
@@ -140,7 +140,7 @@
         }
 
         if (file.size > IMAGE_MAX_BYTES) {
-            showMessage("画像は 5MB までです。", "error");
+            showMessage("画像は 1MB までです。", "error");
             return;
         }
 

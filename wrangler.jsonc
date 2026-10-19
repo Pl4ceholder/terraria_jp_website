@@ -1,5 +1,6 @@
 // Cloudflare Workers の設定。
-// ここに書いた名前で、D1（保存場所）と R2（画像の置き場所）を使う。
+// 記事も画像も D1（無料枠）だけで扱う。有料の置き場所（R2）は使わない。
+// 上限を超えたときは「エラーになる」だけで、料金は発生しない。
 // 詳しい手順は README.md の「公開のしくみ」と CONTRIBUTING.md を参照。
 
 {
@@ -13,23 +14,17 @@
         "directory": "public",
     },
 
-    // コラムの保存場所。database_id は発行されたものに置き換える
-    // （GitHub Actions から公開するときは D1_DATABASE_ID で差し替える）。
+    // コラムの保存場所（本番の D1。`wrangler d1 create terraria-jp` で発行されたもの）
     "d1_databases": [
         {
             "binding": "DB",
             "database_name": "terraria-jp",
-            "database_id": "PLACEHOLDER",
+            "database_id": "65f1a8ed-7bd4-4247-97e5-e5797ab29ef1",
         },
     ],
 
-    // 記事の画像の置き場所
-    "r2_buckets": [
-        {
-            "binding": "IMAGES",
-            "bucket_name": "terraria-jp-images",
-        },
-    ],
+    // 記事の画像は D1 の images テーブルに入れる（R2 は使わない）。
+    // R2 は使った分だけ請求が来る仕組みなので、料金が絶対に発生しないよう外してある。
 
     "observability": { "enabled": true },
 }
