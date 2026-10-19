@@ -5,18 +5,18 @@ Terraria の日本コミュニティ向けの公式サイトです。
 ## 概要
 
 - 素の HTML / CSS / JavaScript による静的サイト（フレームワーク無し）
-- コラム（`columns/*.md`）だけは Markdown からビルドする。生成物は `_site/` にまとまり、そこが公開される
-- コラム以外のページは `index.html` をブラウザで開けば確認できる
+- 公開は Cloudflare Workers。手書きのページは `public/` をそのまま配信し、コラムだけ D1 から組み立てて返す
+- コラムはサイト内のフォームから投稿できる（Git を知らなくてよい）。画像もそのまま上げられる
+- 投稿は「承認待ち」で保存され、運営が公開を決める（`/admin/columns`）
 - 整形・検査はエディタの保存時に自動で走る（コミット前のチェックは無し）
-- Node.js（20.19.0 以上）は Stylelint とコラムのビルドに使う
+- Node.js（20.19.0 以上）は Stylelint と Wrangler に使う
 
 ## ドキュメント
 
-| 文書                                     | 内容                                         |
-| ---------------------------------------- | -------------------------------------------- |
-| [CONTRIBUTING.md](./CONTRIBUTING.md)     | 環境構築と開発の進め方。**最初にこれを読む** |
-| [CODING_RULES.md](./CODING_RULES.md)     | コーディング規約（HTML / CSS / JS / Git）    |
-| [columns/README.md](./columns/README.md) | コラムの投稿のしかた（Git を使わない人向け） |
+| 文書                                 | 内容                                         |
+| ------------------------------------ | -------------------------------------------- |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | 環境構築と開発の進め方。**最初にこれを読む** |
+| [CODING_RULES.md](./CODING_RULES.md) | コーディング規約（HTML / CSS / JS / Git）    |
 
 ## はじめかた
 
@@ -25,29 +25,61 @@ npm install
 ```
 
 整形（Prettier）は VS Code 拡張だけで動くため npm は必須ではありません。
-CSS のクラス名チェック（Stylelint）とコラムのビルドのために `npm install` します。
+CSS のクラス名チェック（Stylelint）と、ローカルでの動作確認（Wrangler）のために `npm install` します。
 手順の詳細は [CONTRIBUTING.md](./CONTRIBUTING.md) を参照してください。
+
+## 料金（無料枠だけで動かす）
+
+このサイトは「何があっても料金が発生しない」形で動かします。仕組みは次の 4 つです。
+
+1. 使うのは **Workers と D1** だけ。どちらも無料枠を超えると「エラーになる」だけで、請求は来ない
+2. 使った分だけ請求が来る **R2 は使わない**。記事の画像は D1 の `images` テーブルに入れる
+3. アカウントは **Workers Free のまま**にする（支払い方法を登録しない・有料プランに変えない）
+4. `npm run check:free` で、料金が発生しうる設定が混ざっていないか確かめる（デプロイ前に必ず通す）
+
+無料枠と、超えたときの動き:
+
+| 項目                 | 無料枠                                      | 超えたとき                 |
+| -------------------- | ------------------------------------------- | -------------------------- |
+| Workers のリクエスト | 100,000 / 日                                | その日はエラー（請求なし） |
+| Workers の CPU       | 10ms / 回                                   | エラー（請求なし）         |
+| 手書きのページ・素材 | 無制限（静的アセットは無料）                | —                          |
+| D1 の行読み取り      | 5,000,000 / 日                              | エラー（請求なし）         |
+| D1 の行書き込み      | 100,000 / 日                                | エラー（請求なし）         |
+| D1 の容量            | アカウント合計 5GB・データベース 1 つ 500MB | 書き込みができなくなる     |
+
+無料枠の壁に当たる前に、アプリ側でお断りする上限（すべて `worker/index.js` で決めている）:
+
+| 項目               | 上限              |
+| ------------------ | ----------------- |
+| 画像 1 枚          | 1MB               |
+| 画像の合計         | 400MB             |
+| 画像のアップロード | 1 人 1 時間 20 枚 |
+| コラムの投稿       | 1 人 1 時間 5 件  |
+| 本文               | 100,000 文字      |
 
 ## ディレクトリ構成
 
 ```
-index.html                トップページ
-news.html                 お知らせ
-server.html               サーバー紹介
-assets/
-├─ css/
-│  ├─ style.css           スタイルの入口（@import を並べる）
-│  ├─ common/             全ページ共通（変数・リセット・レイアウト・部品）
-│  └─ pages/              ページ固有
-├─ js/
-│  ├─ main.js             全ページ共通スクリプト
-│  └─ components/         共通パーツ（Web Component）
-└─ img/                   画像
-columns/                  コラムの記事（Markdown。投稿者はここだけ触る）
-tools/                    ビルドなどのスクリプト
-.github/workflows/        GitHub Actions（ビルドと公開）
-_site/                    生成物（コミットしない。ここが公開される）
-dev/parts.html            共通パーツのプレビュー（開発用）
+public/                    そのまま配信されるページと素材（ここに入れたものだけが公開される）
+├─ index.html              トップページ
+├─ news.html               お知らせ
+├─ server.html             サーバー紹介
+├─ post.html               コラムの投稿フォーム
+├─ admin/columns.html      コラムの承認（運営用。noindex）
+└─ assets/
+   ├─ css/
+   ├─ js/
+   └─ img/
+worker/                    動くページと API（Cloudflare Workers）
+├─ index.js                入口（振り分けと API）
+├─ html.js                 一覧・記事の HTML
+├─ markdown.js             Markdown → HTML
+├─ schema.sql              保存場所の定義
+└─ seed.sql                動作確認用の記事
+scripts/                   補助のスクリプト
+└─ check-free-plan.mjs     料金が発生する設定が入っていないか確かめる
+dev/parts.html             共通パーツのプレビュー（開発用。公開されない）
 ```
 
 ## ブランチ構成
@@ -62,7 +94,10 @@ dev/parts.html            共通パーツのプレビュー（開発用）
 
 ## 公開
 
-`main` にマージされると [GitHub Actions](./.github/workflows/pages.yml) がサイトを組み立て、
-GitHub Pages へ公開します。公開されるのは生成物の `_site/` の中身だけです。
+```bash
+npm run check:free   # 無料枠だけで動くか確かめる
+npm run deploy       # Cloudflare Workers へ公開する
+```
 
-初回だけ、Settings → Pages → Build and deployment の Source を「GitHub Actions」にしてください。
+コラムは D1 に入っているので、記事が増えてもデプロイは要りません。
+デプロイが要るのは、ページ・CSS・JS・Worker のコードを直したときだけです。
