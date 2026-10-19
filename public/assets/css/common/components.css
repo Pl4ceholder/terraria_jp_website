@@ -18,15 +18,6 @@
         transform 0.2s ease;
 }
 
-/* 押せないとき（送信中など）は、押せないことが見た目で分かるようにする */
-.c-button:disabled {
-    color: var(--color-text-muted);
-    background-color: var(--color-surface-alt);
-    cursor: default;
-    opacity: 0.7;
-    transform: none;
-}
-
 .c-button:hover {
     color: var(--color-on-primary);
     background-color: var(--color-accent);
@@ -35,6 +26,34 @@
 
 .c-button:active {
     transform: translateY(0);
+}
+
+/* 小さめ（一覧の中の操作など） */
+.c-button--small {
+    padding: 0.5em 1.25em;
+    font-size: 0.95rem;
+}
+
+/* 取り消せない操作（削除するなど） */
+.c-button--danger {
+    color: var(--color-text);
+    background-color: transparent;
+    border: 1px solid var(--color-danger);
+    box-shadow: none;
+}
+
+.c-button--danger:hover {
+    color: var(--color-on-primary);
+    background-color: var(--color-danger);
+}
+
+/* 押せないとき（送信中など）は、押せないことが見た目で分かるようにする */
+.c-button:disabled {
+    color: var(--color-text-muted);
+    background-color: var(--color-surface-alt);
+    cursor: default;
+    opacity: 0.7;
+    transform: none;
 }
 
 /* 下層ページの導入（見出し・リード・説明・ボタン） -------------------- */

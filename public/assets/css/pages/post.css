@@ -86,15 +86,9 @@
     align-items: center;
 }
 
-.p-post__file-button {
-    flex: none;
-    padding: 0.5em 1.25em;
-    font-size: 0.95rem;
-}
-
-/* 見た目は label 側（.p-post__file-button）が持ち、元の入力は隠している。
+/* 元の入力は隠して、見た目は label 側に任せている。
    キーボードで選んだときに、どこの操作中かが分かるように線を出す。 */
-.p-post__file:focus-visible + .p-post__file-button {
+.p-post__file:focus-visible + .c-button {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
 }
