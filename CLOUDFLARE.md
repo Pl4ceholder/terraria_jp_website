@@ -91,6 +91,7 @@ CSS と共通パーツは相対パスで読み込むので、そのまま動き�
 ```bash
 npm run check:free     # 有料の設定が混ざっていないか確かめる
 npm run check:events   # 「これからのイベント」の選び方が期待どおりか確かめる
+npm run check:recruit  # 「いま立っている募集」の選び方が期待どおりか確かめる
 npm run deploy         # Cloudflare Workers へ公開する
 ```
 
@@ -132,6 +133,31 @@ npx wrangler secret put SYNC_SECRET   # bot とサイトに同じ文字列を入
 
 - イベントの終了は同期しません。終わったものを Discord が返さなくなるので、次に届いた
   ときの入れ替えで消えます。bot が止まっていても、上の表のとおりサイト側で自然に消えます
+
+募集は「まだ生きているか」で出し分けます。条件は `worker/recruitments.js` の 1 か所だけで、
+`npm run check:recruit` で手元で確かめられます。Discord のスレッドは、最後の書き込みから
+一定時間（普通は 1440 分＝24 時間）で流れます。その時刻を bot から受け取って保存し、
+ページは今と比べるだけにしています。
+
+| 募集の状態                            | サイトでの出かた                     |
+| ------------------------------------- | ------------------------------------ |
+| 流れる時刻がこれから                  | 出る（書き込みで延びれば延びたまま） |
+| 流れる時刻を過ぎて、猶予（60 分）の中 | 出る（「流れる時刻を過ぎました」）   |
+| 流れる時刻を過ぎて、猶予も過ぎた      | 出さない（「N 件は出していません」） |
+| 流れる時刻が分からない（古い行）      | 出る（判断できないものは消さない）   |
+
+### 保存場所に、あとから列を足す
+
+`worker/schema.sql` は新しい DB を作るときの形です。すでに動いている DB に列を足すときは、
+`worker/migrations/` の中のファイルを、リモートとローカルの両方に 1 回ずつ流します。
+
+```bash
+npx wrangler d1 execute terraria-jp --local  --file=worker/migrations/001_recruit_activity.sql
+npx wrangler d1 execute terraria-jp --remote --file=worker/migrations/001_recruit_activity.sql
+```
+
+同じファイルをもう一度流すと「列がもうある」でエラーになります。増える列には既定値が入るので、
+すでに入っているデータは消えません。
 
 ### ローカルで試す
 
@@ -176,22 +202,22 @@ npx wrangler d1 execute terraria-jp --local --command "SELECT id, title, status 
 
 ## 6. つまずいたとき
 
-| 症状                                                       | 原因と対処                                                                                                     |
-| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| 「合言葉が設定されていません。」と出る                     | まだ `npx wrangler secret put ADMIN_PASSWORD` をしていない                                                     |
-| 合言葉が通らない                                           | 10 分間に 5 回間違えると止まる。少し待ってから入れ直す                                                         |
-| 証明書エラー（ERR_SSL_VERSION_OR_CIPHER_MISMATCH）         | 新しい workers.dev では証明書ができるまで数分かかることがある。待って開き直す                                  |
-| `wrangler login` が `spawn EPERM` で失敗する               | `npx wrangler login --device --browser false` を使う                                                           |
-| デプロイ時に「register a workers.dev subdomain」と言われる | ダッシュボードでサブドメインを登録する（1 回だけ）                                                             |
-| `SQLITE_BUSY` が出る                                       | `npm run dev` と `wrangler d1 execute --local` を同時に動かさない                                              |
-| 画像が上がらない（413 / 415 / 507）                        | 1MB 超・画像でない・置き場所がいっぱい。上限は README の表を見る                                               |
-| 直したのに公開サイトが変わらない                           | コードは `npm run deploy` が要る。記事は D1 なのでデプロイ不要                                                 |
-| ローカルの記事が消えた                                     | `database_id` を変えるとローカルの D1 は作り直される。`npm run db:local` と `npm run db:local:seed` を実行する |
-| 料金が請求されていないか不安                               | `npm run check:free` と、ダッシュボードの Billing で Workers Free のままか確認する                             |
-| `/recruit` に募集が出ない                                  | bot からまだ届いていない。`SYNC_SECRET` を登録したか、bot の送り先が合っているかを見る                         |
-| お知らせに「これからのイベント」が出ない                   | Discord にこれからのイベントが無いか、bot がまだ送れていない。空のときは、かたまりごと出さない                 |
-| bot 側で「受け付けられませんでした」と出る（401）          | bot とサイトの `SYNC_SECRET` が違う。`npx wrangler secret put SYNC_SECRET` で入れ直す                          |
-| bot 側で「同期の設定がされていません」と出る（503）        | サイト側に `SYNC_SECRET` がまだ無い。登録する                                                                  |
+| 症状                                                       | 原因と対処                                                                                                             |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 「合言葉が設定されていません。」と出る                     | まだ `npx wrangler secret put ADMIN_PASSWORD` をしていない                                                             |
+| 合言葉が通らない                                           | 10 分間に 5 回間違えると止まる。少し待ってから入れ直す                                                                 |
+| 証明書エラー（ERR_SSL_VERSION_OR_CIPHER_MISMATCH）         | 新しい workers.dev では証明書ができるまで数分かかることがある。待って開き直す                                          |
+| `wrangler login` が `spawn EPERM` で失敗する               | `npx wrangler login --device --browser false` を使う                                                                   |
+| デプロイ時に「register a workers.dev subdomain」と言われる | ダッシュボードでサブドメインを登録する（1 回だけ）                                                                     |
+| `SQLITE_BUSY` が出る                                       | `npm run dev` と `wrangler d1 execute --local` を同時に動かさない                                                      |
+| 画像が上がらない（413 / 415 / 507）                        | 1MB 超・画像でない・置き場所がいっぱい。上限は README の表を見る                                                       |
+| 直したのに公開サイトが変わらない                           | コードは `npm run deploy` が要る。記事は D1 なのでデプロイ不要                                                         |
+| ローカルの記事が消えた                                     | `database_id` を変えるとローカルの D1 は作り直される。`npm run db:local` と `npm run db:local:seed` を実行する         |
+| 料金が請求されていないか不安                               | `npm run check:free` と、ダッシュボードの Billing で Workers Free のままか確認する                                     |
+| `/recruit` に募集が出ない                                  | bot からまだ届いていない。`SYNC_SECRET` を登録したか、bot の送り先が合っているかを見る。流れる時刻を過ぎた募集は出ない |
+| お知らせに「これからのイベント」が出ない                   | Discord にこれからのイベントが無いか、bot がまだ送れていない。空のときは、かたまりごと出さない                         |
+| bot 側で「受け付けられませんでした」と出る（401）          | bot とサイトの `SYNC_SECRET` が違う。`npx wrangler secret put SYNC_SECRET` で入れ直す                                  |
+| bot 側で「同期の設定がされていません」と出る（503）        | サイト側に `SYNC_SECRET` がまだ無い。登録する                                                                          |
 
 ## 7. これからやること
 
