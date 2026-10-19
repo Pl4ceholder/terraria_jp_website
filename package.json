@@ -12,6 +12,7 @@
         "deploy": "wrangler deploy",
         "check:free": "node scripts/check-free-plan.mjs",
         "check:events": "node scripts/check-events.mjs",
+        "check:recruit": "node scripts/check-recruit.mjs",
         "db:local": "wrangler d1 execute terraria-jp --local --file=worker/schema.sql",
         "db:local:seed": "wrangler d1 execute terraria-jp --local --file=worker/seed.sql",
         "db:remote": "wrangler d1 execute terraria-jp --remote --file=worker/schema.sql",

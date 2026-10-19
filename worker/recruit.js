@@ -50,6 +50,45 @@ const formatAgo = (iso, now) => {
     return `${Math.floor(hours / 24)} 日前`;
 };
 
+/** 「あと 5 時間」のように、Discord から流れるまでの残りを表す */
+const formatLeft = (ms) => {
+    const minutes = Math.max(0, Math.floor(ms / 60000));
+    if (minutes < 60) return `${minutes} 分`;
+
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return `${hours} 時間`;
+
+    return `${Math.round(hours / 24)} 日`;
+};
+
+/**
+ * 「書き込み 6 件 ・ あと 20 時間で流れます」。
+ *
+ * 書き込みの数は参加人数そのものではないので、そう書く。流れる時刻を過ぎているときは、
+ * そのことを伝える（猶予の間はまだ一覧に出ている）。
+ */
+const renderLife = (recruit, now) => {
+    const parts = [];
+
+    if (Number(recruit.messageCount) > 0) parts.push(`書き込み ${recruit.messageCount} 件`);
+
+    const deadline = Date.parse(recruit.deadlineAt);
+    let over = false;
+
+    if (Number.isFinite(deadline)) {
+        const left = deadline - now;
+        over = left <= 0;
+        parts.push(over ? "流れる時刻を過ぎました" : `あと ${formatLeft(left)}で流れます`);
+    }
+
+    if (parts.length === 0) return "";
+
+    return `
+                        <p class="p-recruit__life${over ? " p-recruit__life--over" : ""}">
+                            ${escapeHtml(parts.join(" ・ "))}
+                        </p>`;
+};
+
 /** 募集 1 件のカード */
 const renderItem = (recruit, now) => {
     const badges = [recruit.mode, recruit.platform, recruit.vc]
@@ -77,6 +116,8 @@ const renderItem = (recruit, now) => {
                             <dd class="p-recruit__connection">${escapeHtml(recruit.connection)}</dd>`
         : "";
 
+    const life = renderLife(recruit, now);
+
     return `                    <li class="p-recruit__item">
                         <p class="p-recruit__badges">
                             ${badges}
@@ -92,7 +133,7 @@ const renderItem = (recruit, now) => {
                             <dd>
                                 <time datetime="${escapeHtml(recruit.startedAt)}">${escapeHtml(formatJst(recruit.startedAt))}</time>
                             </dd>${connection}
-                        </dl>
+                        </dl>${life}
                         <p class="p-recruit__actions">
                             <a
                                 class="c-button c-button--small"
@@ -103,6 +144,29 @@ const renderItem = (recruit, now) => {
                             >
                         </p>
                     </li>`;
+};
+
+/**
+ * 何件立っているか。
+ *
+ * 流れる時刻を過ぎて出していないものがあれば、その数も伝える（黙って減らさない）。
+ */
+const renderCount = (count, hiddenCount) => {
+    if (count === 0 && hiddenCount === 0) return "";
+
+    const head = count > 0 ? `\n                    いま ${count} 件の募集が立っています。` : "";
+    const hidden =
+        hiddenCount > 0
+            ? `
+                    <span class="p-recruit__warning"
+                        >流れる時刻を過ぎた ${hiddenCount} 件は出していません。</span
+                    >`
+            : "";
+
+    return `                <p class="p-recruit__count">${head}${hidden}
+                </p>
+
+`;
 };
 
 /** 最終更新の案内。古くなっていたら、そのことも伝える */
@@ -128,7 +192,7 @@ const renderUpdated = (syncedAt, now) => {
 };
 
 /** 募集の一覧のページ */
-export const renderRecruitList = (recruits, syncedAt, now = Date.now()) => {
+export const renderRecruitList = ({ recruits, syncedAt, hiddenCount = 0, now = Date.now() }) => {
     const list =
         recruits.length > 0
             ? `                <ul class="p-recruit__list">
@@ -144,13 +208,13 @@ ${recruits.map((recruit) => renderItem(recruit, now)).join("\n")}
                     <h1 class="c-page-header__title">${RECRUIT_TITLE}</h1>
                     <p class="c-page-header__text">
                         Discord に立てられたマルチ募集を、ここから見られます。参加したいときは
-                        Discord で声をかけてください。募集は 24 時間ほどで流れます。
+                        Discord で声をかけてください。最後の書き込みから 24 時間ほどで流れます。
                     </p>
                 </div>
             </header>
 
             <div class="l-container">
-${renderUpdated(syncedAt, now)}                <div class="p-recruit">
+${renderUpdated(syncedAt, now)}${renderCount(recruits.length, hiddenCount)}                <div class="p-recruit">
 ${list}
                 </div>
             </div>`;

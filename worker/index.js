@@ -24,6 +24,12 @@
 // ==========================================================================
 
 import { EVENT_LIST_SQL } from "./events.js";
+import {
+    deadlineOf,
+    RECRUIT_HIDDEN_SQL,
+    RECRUIT_LIST_SQL,
+    RECRUIT_GRACE_MINUTES,
+} from "./recruitments.js";
 import { renderMarkdown, buildExcerpt } from "./markdown.js";
 import { renderArticle, renderList, renderNotFound } from "./html.js";
 import { renderRecruitList } from "./recruit.js";
@@ -450,8 +456,10 @@ const handleRecruitSync = async (request, env) => {
             env.DB.prepare(
                 `INSERT INTO recruitments
                      (id, guild_id, channel_id, message_id, mode, platform, vc,
-                      connection, message, author_id, author_name, author_icon, started_at, synced_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)`,
+                      connection, message, author_id, author_name, author_icon, started_at,
+                      last_activity_at, message_count, archive_minutes, deadline_at, synced_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10,
+                         ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)`,
             ).bind(
                 row.id,
                 row.guildId,
@@ -466,6 +474,10 @@ const handleRecruitSync = async (request, env) => {
                 row.authorName,
                 row.authorIcon,
                 row.startedAt,
+                row.lastActivityAt,
+                row.messageCount,
+                row.archiveMinutes,
+                row.deadlineAt,
                 row.syncedAt,
             ),
         ),
@@ -497,6 +509,11 @@ const toRecruitRows = (payload, syncedAt) => {
         if (!id || seen.has(id)) continue;
         seen.add(id);
 
+        const startedAt = toIso(item?.startedAt, syncedAt);
+        // 最後の書き込みが分からなければ、立てた時刻と同じにする
+        const lastActivityAt = toIso(item?.lastActivityAt, startedAt);
+        const archiveMinutes = toCount(item?.archiveMinutes);
+
         data.push({
             id,
             guildId,
@@ -510,7 +527,13 @@ const toRecruitRows = (payload, syncedAt) => {
             authorId: trimTo(item?.authorId, 32),
             authorName: trimTo(item?.authorName, 100),
             authorIcon: trimTo(item?.authorIcon, 500),
-            startedAt: toIso(item?.startedAt, syncedAt),
+            startedAt,
+            lastActivityAt,
+            // 書き込みの数は、参加人数そのものではない（目安）
+            messageCount: toCount(item?.messageCount),
+            archiveMinutes,
+            // ここで流れる時刻を決めておく。ページはこれと今を比べるだけ
+            deadlineAt: deadlineOf({ lastActivityAt, startedAt, archiveMinutes }),
             syncedAt,
         });
     }
@@ -518,22 +541,30 @@ const toRecruitRows = (payload, syncedAt) => {
     return { data };
 };
 
-/** いま立っている募集の一覧。新しい順に出す */
+/**
+ * いま立っている募集の一覧。新しい順に出す。
+ *
+ * Discord から流れる時刻を過ぎたもの（猶予を過ぎたもの）は出さない。bot が止まっても、
+ * 終わった募集がいつまでも出たままにならない。
+ */
 const handleRecruitList = async (env) => {
-    const [list, state] = await Promise.all([
-        env.DB.prepare(
-            `SELECT id, guild_id, mode, platform, vc, connection, message,
-                    author_name, author_icon, started_at
-               FROM recruitments
-              ORDER BY started_at DESC
-              LIMIT ?1`,
-        )
-            .bind(RECRUIT_MAX)
-            .all(),
+    const now = Date.now();
+    const graceIso = new Date(now - RECRUIT_GRACE_MINUTES * 60 * 1000).toISOString();
+
+    const [list, hidden, state] = await Promise.all([
+        env.DB.prepare(RECRUIT_LIST_SQL).bind(graceIso, RECRUIT_MAX).all(),
+        env.DB.prepare(RECRUIT_HIDDEN_SQL).bind(graceIso).first(),
         env.DB.prepare(`SELECT value FROM sync_state WHERE key = 'recruitments_synced_at'`).first(),
     ]);
 
-    return htmlResponse(renderRecruitList((list.results ?? []).map(toRecruit), state?.value ?? ""));
+    return htmlResponse(
+        renderRecruitList({
+            recruits: (list.results ?? []).map(toRecruit),
+            syncedAt: state?.value ?? "",
+            hiddenCount: hidden?.hidden ?? 0,
+            now,
+        }),
+    );
 };
 
 /** DB の 1 行を、ページを組み立てるのに使う形にする */
@@ -548,6 +579,9 @@ const toRecruit = (row) => ({
     authorName: row.author_name ?? "",
     authorIcon: row.author_icon ?? "",
     startedAt: row.started_at ?? "",
+    lastActivityAt: row.last_activity_at ?? "",
+    messageCount: row.message_count ?? 0,
+    deadlineAt: row.deadline_at ?? "",
 });
 
 /** 送られてきた値を、長さを切った文字列にする */

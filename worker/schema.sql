@@ -105,6 +105,14 @@ CREATE TABLE IF NOT EXISTS recruitments (
     author_icon TEXT NOT NULL DEFAULT '',
     -- 募集を立てた時刻
     started_at TEXT NOT NULL,
+    -- 最後に書き込みがあった時刻。スレッドは、ここから流れる
+    last_activity_at TEXT,
+    -- 書き込みの数（参加の目安。参加人数そのものではない）
+    message_count INTEGER NOT NULL DEFAULT 0,
+    -- 「最後の書き込みから何分で流れる」設定（普通は 1440 分＝24 時間）
+    archive_minutes INTEGER NOT NULL DEFAULT 0,
+    -- Discord から流れる時刻。同期のときに計算して入れる（ページはこれと今を比べるだけ）
+    deadline_at TEXT,
     -- 最後に bot から届いた時刻
     synced_at TEXT NOT NULL
 );
@@ -112,6 +120,10 @@ CREATE TABLE IF NOT EXISTS recruitments (
 -- 一覧は「新しい順」で引くので、その形に合わせる
 CREATE INDEX IF NOT EXISTS idx_recruitments_started
     ON recruitments (started_at DESC);
+
+-- 「まだ生きているか」で絞るので、その形に合わせる
+CREATE INDEX IF NOT EXISTS idx_recruitments_deadline
+    ON recruitments (deadline_at);
 
 -- これからの Discord のイベント（サーバーの「イベント」で立てたもの）。
 --

@@ -18,6 +18,13 @@
     color: var(--color-accent);
 }
 
+/* 何件立っているかの案内 */
+.p-recruit__count {
+    margin-block-end: var(--space-s);
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
 .p-recruit__empty {
     padding-block: var(--space-m);
     color: var(--color-text-muted);
@@ -105,6 +112,17 @@
 /* SteamID や IP:Port は長いので、はみ出さずに折り返す */
 .p-recruit__connection {
     overflow-wrap: anywhere;
+}
+
+/* 書き込みの数と、Discord から流れるまでの目安 */
+.p-recruit__life {
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+}
+
+/* 流れる時刻を過ぎている（まだ一覧には出ている） */
+.p-recruit__life--over {
+    color: var(--color-accent);
 }
 
 /* ボタンはカードの下にそろえる */
