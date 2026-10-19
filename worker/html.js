@@ -112,7 +112,7 @@ ${items}
                         Terraria の遊び方や、サーバーでの出来事を書いた読み物です。誰でも書けます。
                     </p>
                     <p class="c-page-header__actions">
-                        <a class="c-button" href="/post.html">コラムを書く</a>
+                        <a class="c-button" href="/post">コラムを書く</a>
                     </p>
                 </div>
             </header>
