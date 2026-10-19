@@ -67,12 +67,11 @@ CSS と共通パーツは相対パスで読み込むので、そのまま動き�
 | 2   | D1 を作る                        | `npx wrangler d1 create terraria-jp` → 出た `database_id` を `wrangler.jsonc` に貼る       | 済み（terraria-jp） |
 | 3   | 保存場所を作る                   | `npm run db:remote`（`wrangler d1 execute terraria-jp --remote --file=worker/schema.sql`） | 済み                |
 | 4   | 動作確認用の記事を入れる（任意） | `npx wrangler d1 execute terraria-jp --remote --file=worker/seed.sql`                      | 済み（5 件）        |
-| 5   | 合言葉を登録する                 | `npx wrangler secret put ADMIN_PASSWORD`                                                   | **未**（下記）      |
+| 5   | 合言葉を登録する                 | `npx wrangler secret put ADMIN_PASSWORD`                                                   | 済み                |
 | 6   | 公開する                         | `npm run deploy`                                                                           | 済み                |
 
-合言葉を登録していない間は、承認ページのログインが 503 で断られます（わざとそうして
-います。誰も入れないほうが安全なため）。登録すると、次のリクエストから使えるように
-なります。
+合言葉を登録する前は、承認ページのログインが 503 で断られます（誰も入れないほうが安全な
+ため、わざとそうしています）。登録すると、次のリクエストから使えるようになります。
 
 > 合言葉は運営だけが知る長い文字列にしてください。アシスタントや Issue に貼らないこと。
 
@@ -153,11 +152,16 @@ npx wrangler d1 execute terraria-jp --local --command "SELECT id, title, status 
 | ローカルの記事が消えた                                     | `database_id` を変えるとローカルの D1 は作り直される。`npm run db:local` と `npm run db:local:seed` を実行する |
 | 料金が請求されていないか不安                               | `npm run check:free` と、ダッシュボードの Billing で Workers Free のままか確認する                             |
 
-## 7. まだ終わっていないこと
+## 7. これからやること
 
-- **合言葉の登録**（`npx wrangler secret put ADMIN_PASSWORD`）
-- **GitHub Actions**: `origin` がまだ仮の URL（`Pl4ceholder`）なので未着手。本物の
-  リポジトリに変えたら、`develop` への push で `npm run check:free` と `npm run deploy` を
-  回す形にする（そのとき `CLOUDFLARE_API_TOKEN` を GitHub の secrets に入れる）
-- **独自ドメイン**: いまは `workers.dev` の URL。取る場合は Cloudflare でのドメイン取得が
-  有料になるため、先に相談する
+- **GitHub Actions**: `origin`（`Pl4ceholder/terraria_jp_website`）は正しいので、あとは
+  ワークフローを足すだけ。`develop` への push で `npm run check:free` と `npm run deploy`
+  を回す形にする。GitHub の secrets に `CLOUDFLARE_API_TOKEN`（必要なら
+  `CLOUDFLARE_ACCOUNT_ID`）を入れる
+- **手元の差分を push する**: いま `feature/#1_ひな形作成` が `origin` より進んでいる。
+  レビューを頼むときに push する
+- **承認ページの通し確認**: 合言葉は登録済み。ログイン → 公開 → 見送り → 削除を
+  本番で一度通してみる（記事は仮の 5 件なので、消しても困らない）
+
+独自ドメインは後で決める。いまは `workers.dev` の URL で動かす（Cloudflare での
+ドメイン取得は有料なので、取るときは先に相談する）。
