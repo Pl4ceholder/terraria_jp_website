@@ -1,0 +1,35 @@
+// Cloudflare Workers の設定。
+// ここに書いた名前で、D1（保存場所）と R2（画像の置き場所）を使う。
+// 詳しい手順は README.md の「公開のしくみ」と CONTRIBUTING.md を参照。
+
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "terraria-jp",
+    "main": "worker/index.js",
+    "compatibility_date": "2026-10-01",
+
+    // そのまま配信するページと素材。ここに入れたものだけが公開される。
+    "assets": {
+        "directory": "public",
+    },
+
+    // コラムの保存場所。database_id は発行されたものに置き換える
+    // （GitHub Actions から公開するときは D1_DATABASE_ID で差し替える）。
+    "d1_databases": [
+        {
+            "binding": "DB",
+            "database_name": "terraria-jp",
+            "database_id": "PLACEHOLDER",
+        },
+    ],
+
+    // 記事の画像の置き場所
+    "r2_buckets": [
+        {
+            "binding": "IMAGES",
+            "bucket_name": "terraria-jp-images",
+        },
+    ],
+
+    "observability": { "enabled": true },
+}

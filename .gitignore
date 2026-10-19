@@ -1,8 +1,9 @@
 # 依存関係
 node_modules/
 
-# 生成物（npm run build が作る）
-_site/
+# ローカルで動かしたときの Cloudflare の状態
+.wrangler/
+.dev.vars
 
 # OS が作るファイル
 Thumbs.db

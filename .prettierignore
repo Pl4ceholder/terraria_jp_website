@@ -1,4 +1,4 @@
 # Prettier に整形させないファイル
 node_modules/
 package-lock.json
-_site/
+.wrangler/
