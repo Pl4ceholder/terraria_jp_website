@@ -57,6 +57,7 @@
 │     │     ├─ server.css    p-（サーバー紹介）
 │     │     ├─ columns.css   p-（コラムの一覧と記事）
 │     │     ├─ post.css      p-（投稿フォーム）
+│     │     ├─ recruit.css   p-（マルチ募集の一覧）
 │     │     └─ admin.css     p-（承認）
 │     ├─ js/
 │     │  ├─ main.js          全ページ共通スクリプト
@@ -70,6 +71,7 @@
 ├─ worker/                   動くページと API（Cloudflare Workers）
 │  ├─ index.js               入口（振り分けと API）
 │  ├─ html.js                一覧・記事・404 の HTML
+│  ├─ recruit.js             マルチ募集の HTML
 │  ├─ markdown.js            Markdown → HTML
 │  ├─ schema.sql             保存場所の定義
 │  └─ seed.sql               動作確認用の記事
@@ -284,8 +286,11 @@ chore: Prettier と Stylelint を導入
 
 動く部分は `worker/` に置く。保存場所は Cloudflare D1 で、記事も画像もそこに入る。
 
-- 振り分けと API は `worker/index.js`、一覧・記事の HTML は `worker/html.js`、
-  Markdown の変換は `worker/markdown.js`
+- 振り分けと API は `worker/index.js`、コラムの一覧・記事の HTML は `worker/html.js`、
+  マルチ募集の HTML は `worker/recruit.js`、Markdown の変換は `worker/markdown.js`
+- Discord の内容をサイトに出すときは、サイトから Discord を叩かず、bot から
+  `POST /api/internal/...` で受け取って D1 に入れる。合言葉は `SYNC_SECRET`（合言葉が
+  無ければ 503、違えば 401）。受け取った内容で丸ごと入れ替え、何度届いても同じ結果にする
 - 保存場所（テーブル）は `worker/schema.sql` に書く。何度実行しても同じ結果になるように書く
 - スキーマを変えたら、ローカル（`npm run db:local`）と本番（`npm run db:remote`）の両方に適用する
 - 本番のデータを直接変える作業は、先に相談する

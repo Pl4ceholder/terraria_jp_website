@@ -8,6 +8,7 @@ Terraria の日本コミュニティ向けの公式サイトです。
 - 公開は Cloudflare Workers。手書きのページは `public/` をそのまま配信し、コラムだけ D1 から組み立てて返す
 - コラムはサイト内のフォームから投稿できる（Git を知らなくてよい）。画像もそのまま上げられる
 - 投稿は「承認待ち」で保存され、運営が公開を決める（`/admin/columns`）
+- Discord のマルチ募集を `/recruit` で見られる（中身は bot から受け取った写し。サイトから Discord は叩かない）
 - 整形・検査はエディタの保存時に自動で走る（コミット前のチェックは無し）
 - Node.js（20.19.0 以上）は Stylelint と Wrangler に使う
 
@@ -90,7 +91,8 @@ public/                    そのまま配信されるページと素材（こ�
    └─ img/
 worker/                    動くページと API（Cloudflare Workers）
 ├─ index.js                入口（振り分けと API）
-├─ html.js                 一覧・記事の HTML
+├─ html.js                 コラムの一覧・記事の HTML
+├─ recruit.js              マルチ募集の HTML
 ├─ markdown.js             Markdown → HTML
 ├─ schema.sql              保存場所の定義
 └─ seed.sql                動作確認用の記事

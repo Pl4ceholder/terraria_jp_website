@@ -61,17 +61,20 @@ CSS と共通パーツは相対パスで読み込むので、そのまま動き�
 
 新しい Cloudflare アカウントで一から作るときの手順です。括弧内は現在の状態です。
 
-| #   | すること                         | コマンド・操作                                                                             | 状態                |
-| --- | -------------------------------- | ------------------------------------------------------------------------------------------ | ------------------- |
-| 1   | Cloudflare に入る                | `npx wrangler login`（`spawn EPERM` で失敗するときは `--device --browser false`）          | 済み                |
-| 2   | D1 を作る                        | `npx wrangler d1 create terraria-jp` → 出た `database_id` を `wrangler.jsonc` に貼る       | 済み（terraria-jp） |
-| 3   | 保存場所を作る                   | `npm run db:remote`（`wrangler d1 execute terraria-jp --remote --file=worker/schema.sql`） | 済み                |
-| 4   | 動作確認用の記事を入れる（任意） | `npx wrangler d1 execute terraria-jp --remote --file=worker/seed.sql`                      | 済み（5 件）        |
-| 5   | 合言葉を登録する                 | `npx wrangler secret put ADMIN_PASSWORD`                                                   | 済み                |
-| 6   | 公開する                         | `npm run deploy`                                                                           | 済み                |
+| #   | すること                         | コマンド・操作                                                                             | 状態                   |
+| --- | -------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------- |
+| 1   | Cloudflare に入る                | `npx wrangler login`（`spawn EPERM` で失敗するときは `--device --browser false`）          | 済み                   |
+| 2   | D1 を作る                        | `npx wrangler d1 create terraria-jp` → 出た `database_id` を `wrangler.jsonc` に貼る       | 済み（terraria-jp）    |
+| 3   | 保存場所を作る                   | `npm run db:remote`（`wrangler d1 execute terraria-jp --remote --file=worker/schema.sql`） | 済み                   |
+| 4   | 動作確認用の記事を入れる（任意） | `npx wrangler d1 execute terraria-jp --remote --file=worker/seed.sql`                      | 済み（5 件）           |
+| 5   | 合言葉を登録する                 | `npx wrangler secret put ADMIN_PASSWORD`                                                   | 済み                   |
+| 6   | 公開する                         | `npm run deploy`                                                                           | 済み                   |
+| 7   | 募集の同期の合言葉を登録する     | `npx wrangler secret put SYNC_SECRET`                                                      | 未（bot をつなぐとき） |
 
 合言葉を登録する前は、承認ページのログインが 503 で断られます（誰も入れないほうが安全な
 ため、わざとそうしています）。登録すると、次のリクエストから使えるようになります。
+募集の同期に使う `SYNC_SECRET` も同じ考え方で、登録するまでは bot からの受け取りが 503 で
+断られます。
 
 > 合言葉は運営だけが知る長い文字列にしてください。アシスタントや Issue に貼らないこと。
 
@@ -96,6 +99,22 @@ npm run deploy       # Cloudflare Workers へ公開する
 npx wrangler secret put ADMIN_PASSWORD
 ```
 
+### マルチ募集を Discord と同期する
+
+募集の持ち主は Discord 側です。Discord の bot が「いま立っている募集」を集めて
+`/api/internal/recruitments` へ送り、サイトはその写しを DB に入れます。サイト側は
+Discord を叩かないので、Discord が重くてもサイトは止まりません。
+
+```bash
+npx wrangler secret put SYNC_SECRET   # bot とサイトに同じ文字列を入れる
+```
+
+- bot が止まっていても、最後に届いた一覧がそのまま残ります（`/recruit` に最終更新が出ます）
+- 合言葉が違うと 401、まだ登録していなければ 503 で断ります
+- 届いた内容で丸ごと入れ替えるので、何度届いても同じ結果になります（途中で切れても、
+  中途半端な一覧は残りません）
+- 一覧は `recruitments` に、最後に届いた時刻は `sync_state` に入ります
+
 ### ローカルで試す
 
 ```bash
@@ -105,7 +124,7 @@ npm run dev            # http://127.0.0.1:8787 で開ける
 ```
 
 - ローカルの合言葉は `.dev.vars` に書きます（`Copy-Item .dev.vars.example .dev.vars`）。
-  `.dev.vars` は Git に入りません。
+  `.dev.vars` は Git に入りません。`ADMIN_PASSWORD` と `SYNC_SECRET` の 2 つを書きます。
 - `npm run dev` は同時に 1 つだけにしてください。`wrangler d1 execute --local` も同じ
   ファイルを使うため、同時に動かすと `SQLITE_BUSY` で失敗します。
 
@@ -151,9 +170,17 @@ npx wrangler d1 execute terraria-jp --local --command "SELECT id, title, status 
 | 直したのに公開サイトが変わらない                           | コードは `npm run deploy` が要る。記事は D1 なのでデプロイ不要                                                 |
 | ローカルの記事が消えた                                     | `database_id` を変えるとローカルの D1 は作り直される。`npm run db:local` と `npm run db:local:seed` を実行する |
 | 料金が請求されていないか不安                               | `npm run check:free` と、ダッシュボードの Billing で Workers Free のままか確認する                             |
+| `/recruit` に募集が出ない                                  | bot からまだ届いていない。`SYNC_SECRET` を登録したか、bot の送り先の URL が合っているかを見る                  |
+| bot 側で「受け付けられませんでした」と出る（401）          | bot とサイトの `SYNC_SECRET` が違う。`npx wrangler secret put SYNC_SECRET` で入れ直す                          |
+| bot 側で「同期の設定がされていません」と出る（503）        | サイト側に `SYNC_SECRET` がまだ無い。登録する                                                                  |
 
 ## 7. これからやること
 
+- **Discord 連携**: 次の 3 つを、動く単位ごとに足していく。
+    - マルチ募集の一覧（`/recruit`）…… サイト側は済み。あとは bot から
+      `/api/internal/recruitments` へ送る部分（`SYNC_SECRET` の登録も必要）
+    - マイページ（自分の実績）…… Discord ログイン（OAuth2）と、bot からの実績の受け取り
+    - イベントのお知らせ（Discord の scheduled events）
 - **GitHub Actions**: `origin`（`Pl4ceholder/terraria_jp_website`）は正しいので、あとは
   ワークフローを足すだけ。`develop` への push で `npm run check:free` と `npm run deploy`
   を回す形にする。GitHub の secrets に `CLOUDFLARE_API_TOKEN`（必要なら
@@ -162,6 +189,7 @@ npx wrangler d1 execute terraria-jp --local --command "SELECT id, title, status 
   レビューを頼むときに push する
 - **承認ページの通し確認**: 合言葉は登録済み。ログイン → 公開 → 見送り → 削除を
   本番で一度通してみる（記事は仮の 5 件なので、消しても困らない）
+- **ナビの「参加方法」**: `join.html` がまだ無い。作るか、ナビから外すかを決める
 
 独自ドメインは後で決める。いまは `workers.dev` の URL で動かす（Cloudflare での
 ドメイン取得は有料なので、取るときは先に相談する）。
