@@ -3,13 +3,14 @@
 このサイトのコードは、この文書のルールに沿って書く。
 判断に迷ったら、まずこの文書を確認し、書かれていなければルールを追記してから書く。
 
-初めて参加する場合の環境構築は [CONTRIBUTING.md](./CONTRIBUTING.md) を参照。
+初めて参加する場合の環境構築は [CONTRIBUTING.md](./CONTRIBUTING.md)、
+公開のしくみと Cloudflare の操作は [CLOUDFLARE.md](./CLOUDFLARE.md) を参照。
 
 ## 0. 前提
 
 | 項目           | 方針                                                                        |
 | -------------- | --------------------------------------------------------------------------- |
-| 構成           | 素の HTML / CSS / JavaScript。コラムだけ Markdown からビルドする（第 1 章） |
+| 構成           | 素の HTML / CSS / JavaScript。動く部分は Cloudflare Workers + D1（第 6 章） |
 | フレームワーク | 使わない（React 等は導入しない）                                            |
 | 対応ブラウザ   | 最新の Chrome / Edge / Firefox / Safari                                     |
 | 対応画面       | モバイルファースト（スマホ優先、PC は広げる）                               |
@@ -21,8 +22,9 @@
 | 課金           | 無料枠（Workers と D1）だけで動かす。料金が発生する仕組みは入れない         |
 
 外部ライブラリ（CDN 読み込みを含む）を足すときは、先に相談する。
-今のところ承認済みなのは、ビルド時だけ使う `marked`（Markdown の変換）と `prettier`（整形）で、
-どちらも閲覧者には配信されない。
+今のところ承認済みなのは `marked`（Markdown → HTML）、`wrangler`（Cloudflare の操作）、
+`prettier`（整形）、`stylelint`（CSS の検査）。閲覧者に配信されるのは `marked` の変換結果だけで、
+ライブラリそのものは配信されない（変換はサーバー側で行う）。
 
 料金が発生しうるサービス（R2・KV・Queues・Workers AI など）を足したくなったときも、先に相談する。
 このサイトは「上限を超えたらエラーになるだけで、請求は来ない」無料枠だけで動かす。
@@ -32,57 +34,68 @@
 
 ```
 .
-├─ index.html                トップページ
-├─ news.html                 お知らせ
-├─ server.html               サーバー紹介
-├─ CODING_RULES.md           この文書
-├─ package.json              npm スクリプト
-├─ assets/
-│  ├─ css/
-│  │  ├─ style.css           スタイルの入口（@import を並べるだけ）
-│  │  ├─ common/             全ページ共通
-│  │  │  ├─ variables.css    CSS 変数（色・余白・サイズ）
-│  │  │  ├─ reset.css        ブラウザ既定スタイルのリセット
-│  │  │  ├─ base.css         要素単位の基本スタイル
-│  │  │  ├─ layout.css       l-（ヘッダー・フッター・コンテナ）
-│  │  │  └─ components.css   c-（ボタンなど使い回す部品）
-│  │  └─ pages/              ページ固有
-│  │     ├─ home.css         p-（トップページ）
-│  │     ├─ news.css         p-（お知らせ）
-│  │     ├─ server.css       p-（サーバー紹介）
-│  │     └─ columns.css      p-（コラムの一覧と記事）
-│  ├─ js/
-│  │  ├─ main.js             全ページ共通スクリプト
-│  │  └─ components/         共通パーツ（Web Component）
-│  │     ├─ site-header.js   共通ヘッダの正本
-│  │     └─ site-footer.js   共通フッターの正本
-│  └─ img/                   画像（命名は kebab-case、例: hero-bg.png）
-├─ columns/                  コラムの記事（人が書くのはここだけ）
-│  ├─ README.md              投稿のしかた（投稿者向け）
-│  ├─ _template.md           記事のひな形（コピーして使う）
-│  ├─ <名前>.md              記事の中身
-│  └─ img/                   記事で使う画像
-├─ tools/
-│  └─ build-columns.mjs      コラムを HTML に組み立てるスクリプト
+├─ public/                   そのまま配信されるページと素材（ここに入れたものだけが公開される）
+│  ├─ index.html             トップページ
+│  ├─ news.html              お知らせ
+│  ├─ server.html            サーバー紹介
+│  ├─ post.html              コラムの投稿フォーム
+│  ├─ admin/
+│  │  └─ columns.html        コラムの承認（運営用。noindex）
+│  └─ assets/
+│     ├─ css/
+│     │  ├─ style.css        スタイルの入口（@import を並べるだけ）
+│     │  ├─ common/          全ページ共通
+│     │  │  ├─ variables.css  CSS 変数（色・余白・サイズ）
+│     │  │  ├─ reset.css      ブラウザ既定スタイルのリセット
+│     │  │  ├─ base.css       要素単位の基本スタイル
+│     │  │  ├─ layout.css     l-（ヘッダー・フッター・コンテナ）
+│     │  │  ├─ components.css c-（ボタンなど使い回す部品）
+│     │  │  └─ utilities.css  u-（補助クラス）
+│     │  └─ pages/           ページ固有
+│     │     ├─ home.css      p-（トップページ）
+│     │     ├─ news.css      p-（お知らせ）
+│     │     ├─ server.css    p-（サーバー紹介）
+│     │     ├─ columns.css   p-（コラムの一覧と記事）
+│     │     ├─ post.css      p-（投稿フォーム）
+│     │     └─ admin.css     p-（承認）
+│     ├─ js/
+│     │  ├─ main.js          全ページ共通スクリプト
+│     │  ├─ components/      共通パーツ（Web Component）
+│     │  │  ├─ site-header.js 共通ヘッダの正本
+│     │  │  └─ site-footer.js 共通フッターの正本
+│     │  └─ pages/           そのページだけのスクリプト
+│     │     ├─ post.js       投稿フォーム
+│     │     └─ admin.js      承認
+│     └─ img/                画像（命名は kebab-case、例: hero-bg.png）
+├─ worker/                   動くページと API（Cloudflare Workers）
+│  ├─ index.js               入口（振り分けと API）
+│  ├─ html.js                一覧・記事・404 の HTML
+│  ├─ markdown.js            Markdown → HTML
+│  ├─ schema.sql             保存場所の定義
+│  └─ seed.sql               動作確認用の記事
+├─ scripts/
+│  └─ check-free-plan.mjs    料金が発生する設定が無いか確かめる
 ├─ dev/                      開発用（公開ページではない）
 │  └─ parts.html             共通パーツのプレビュー
-├─ .github/workflows/
-│  └─ pages.yml              ビルドと GitHub Pages への公開
-├─ _site/                    生成物（コミットしない。ここが公開される）
-│  ├─ columns.html           コラムの一覧（生成物）
-│  └─ columns/               各記事（生成物）
+├─ CLOUDFLARE.md             公開のしくみと作業手順
+├─ CODING_RULES.md           この文書
+├─ package.json              npm スクリプト
 └─ .vscode/                  VS Code 推奨設定
 ```
 
 置き場所の判断基準:
 
-- 全ページで使う見た目 → `assets/css/common/`
-- 1 ページでしか使わない見た目 → `assets/css/pages/<ページ名>.css`
-- 複数ページで使い回す部品（ボタンなど）→ `assets/css/common/components.css`
-- 複数ページで使い回す HTML のまとまり（ヘッダーなど）→ `assets/js/components/<名前>.js`（第 4.2 節）
+- 全ページで使う見た目 → `public/assets/css/common/`
+- 1 ページでしか使わない見た目 → `public/assets/css/pages/<ページ名>.css`
+- 複数ページで使い回す部品（ボタンなど）→ `public/assets/css/common/components.css`
+- 複数ページで使い回す HTML のまとまり（ヘッダーなど）→
+  `public/assets/js/components/<名前>.js`（第 4.2 節）
+- 1 ページだけの動き → `public/assets/js/pages/<ページ名>.js`（第 4.3 節）
 - 新しい CSS ファイルを足したら、必ず `style.css` に `@import` を追記する
-- コラムの記事 → `columns/<名前>.md`。HTML は `tools/build-columns.mjs` が作るので、
-  `_site/` の中は直接編集しない（第 6 章）
+- サーバー側の処理と API → `worker/index.js`（第 6 章）
+- 保存場所（テーブル）を変える → `worker/schema.sql` に書き、ローカルと本番の両方に適用する
+  （第 6 章）
+- 運営だけが使うページ → `public/admin/` に置き、`<meta name="robots" content="noindex">` を付ける
 
 ## 2. HTML ルール
 
@@ -106,12 +119,12 @@
 
 クラスの役割は接頭辞で判断する。接頭辞が無いクラスは書かない。
 
-| 接頭辞 | レイヤー  | 置き場所                   | 例                    |
-| ------ | --------- | -------------------------- | --------------------- |
-| `l-`   | layout    | `common/layout.css`        | `l-header` `l-footer` |
-| `c-`   | component | `common/components.css`    | `c-button`            |
-| `p-`   | project   | `pages/*.css`              | `p-hero`              |
-| `u-`   | utility   | 必要になったら追加（保留） | `u-visually-hidden`   |
+| 接頭辞 | レイヤー  | 置き場所                | 例                    |
+| ------ | --------- | ----------------------- | --------------------- |
+| `l-`   | layout    | `common/layout.css`     | `l-header` `l-footer` |
+| `c-`   | component | `common/components.css` | `c-button`            |
+| `p-`   | project   | `pages/*.css`           | `p-hero`              |
+| `u-`   | utility   | `common/utilities.css`  | `u-visually-hidden`   |
 
 - foundation（`variables.css` / `reset.css` / `base.css`）は接頭辞を使わず、要素セレクタと変数だけを扱う。
 - `p-` はそのページ専用。別ページで使いたくなったら `c-` に格上げする。
@@ -203,6 +216,19 @@ block__element--modifier
   表示されなくなる。名前はコンポーネントごとに変えるか、クラスの中に閉じ込める。
 - 新しい共通パーツは `dev/parts.html` に並べて確認する。
 
+### 4.3 ページ固有のスクリプト
+
+そのページだけの動きは `public/assets/js/pages/<ページ名>.js` に置く（`post.js` / `admin.js`）。
+読み込みは共通パーツと同じく `<script src="..." defer></script>` で行う。
+
+- ページ側は `data-*` で目印を付け、スクリプトは `document.querySelector("[data-...]")` で拾う
+- サーバーとのやり取りは `fetch`。返ってくる JSON は `{ ok: true, ... }` か
+  `{ ok: false, message: "..." }` の形に揃え、`message` はそのまま画面に出す
+  （文言はサーバー側に寄せると、直す場所が 1 か所で済む）
+- 入力の上限はサーバー側（`worker/index.js` の `LIMITS`）と揃える。画面側だけで止めない
+- 送信中はボタンを `disabled` にして、二重送信を防ぐ
+- 画面の切り替え（ログイン前 / ログイン後など）は `hidden` の付け外しで行い、見た目は CSS で変える
+
 ## 5. Git / コミット
 
 - コミットメッセージは Conventional Commits 風に書く。本文と補足は日本語でよい。
@@ -234,38 +260,43 @@ chore: Prettier と Stylelint を導入
 
 ## 6. ツールと使い方
 
-導入済み: Prettier（整形）、Stylelint（CSS の検査）、EditorConfig。
+導入済み: Prettier（整形）、Stylelint（CSS の検査）、EditorConfig、Wrangler（Cloudflare の操作）。
 
 整形と検査は**エディタで保存したとき**に自動で走る（`.vscode/settings.json` で設定済み）。
 コミット前にコマンドを実行する必要はない。
 
-```bash
-npm install     # 任意（初回のみ）。Stylelint をエディタで動かす場合は必要
-npm run format  # まとめて整形したいとき（任意）
-```
+| コマンド                | 用途                                        |
+| ----------------------- | ------------------------------------------- |
+| `npm run dev`           | ローカルで動かす（`http://127.0.0.1:8787`） |
+| `npm run db:local`      | ローカルの保存場所を作る                    |
+| `npm run db:local:seed` | 動作確認用の記事を入れる                    |
+| `npm run check:free`    | 料金が発生する設定が無いか確かめる          |
+| `npm run format`        | まとめて整形したいとき（任意）              |
+| `npm run deploy`        | Cloudflare へ公開する（運営だけ）           |
 
 - 保存時の整形（Prettier）は VS Code 拡張に内蔵の Prettier でも動くため、npm が無くても使える。
 - Stylelint をエディタで動かすには `npm install` が必要（公式拡張は Stylelint を内蔵していない）。
 - 拡張機能は `.vscode/extensions.json` の推奨を入れる。
 - `node_modules/` はコミットしない（`.gitignore` 済み）。
 
-### コラムのビルド
+### 保存場所（D1）と Worker
 
-コラムだけは Markdown から HTML を作る。生成物は `_site/` にまとまり、GitHub Pages には
-`_site/` の中身だけが公開される。
+動く部分は `worker/` に置く。保存場所は Cloudflare D1 で、記事も画像もそこに入る。
 
-```bash
-npm install     # 初回のみ
-npm run build   # columns/ の Markdown を HTML にして _site/ を組み立てる
-```
-
-- 人が書くのは `columns/*.md` だけ。`columns.html` と `columns/*.html` は生成物なので直接編集しない
-- `_site/` はコミットしない（`.gitignore` 済み）
-- 公開されるのは `_site/` の中身だけ（`dev/` や `columns/*.md` は公開されない）
-- Markdown の変換には `marked` を使う（ビルド時だけ。閲覧者には配信されない）
+- 振り分けと API は `worker/index.js`、一覧・記事の HTML は `worker/html.js`、
+  Markdown の変換は `worker/markdown.js`
+- 保存場所（テーブル）は `worker/schema.sql` に書く。何度実行しても同じ結果になるように書く
+- スキーマを変えたら、ローカル（`npm run db:local`）と本番（`npm run db:remote`）の両方に適用する
+- 本番のデータを直接変える作業は、先に相談する
+- アップロードできる画像は 1 枚 1MB・合計 400MB まで（無料枠の手前で断るため）
+- 上限の値（`LIMITS` など）はアプリ側にまとめ、画面側（`post.js`）と揃える
+- Markdown の変換には `marked` を使う（サーバー側だけで動く。閲覧者には配信されない）
 - 生の HTML は文字として出す。コメント（`<!-- -->`）だけは目印としてそのまま残す
-- 記事の書き方は [columns/README.md](./columns/README.md)、公開の流れは
-  [CONTRIBUTING.md](./CONTRIBUTING.md) を参照
+
+**料金**: 使うのは Workers と D1 だけ。無料枠を超えるとエラーになるだけで、請求は来ない。
+使った分だけ請求が来るサービス（R2・KV・Queues など）は使わない。混ざっていないかは
+`npm run check:free` で確かめる。詳しくは [README.md](./README.md) と
+[CLOUDFLARE.md](./CLOUDFLARE.md) を参照。
 
 ## 7. 提出前チェックリスト
 
@@ -277,5 +308,5 @@ npm run build   # columns/ の Markdown を HTML にして _site/ を組み立�
 - [ ] 色・余白が `variables.css` の変数になっている
 - [ ] 画像の `alt`、外部リンクの `rel` を確認した
 - [ ] `npm run check:free` が通る（料金が発生する設定が入っていない）
-- [ ] コラムを足した・変えたときは `npm run build` が通ることを確認した
+- [ ] 動くページを変えたときは `npm run dev` で表示を確認した
 - [ ] コミットメッセージが `<type>(<scope>): <概要>` の形になっている
