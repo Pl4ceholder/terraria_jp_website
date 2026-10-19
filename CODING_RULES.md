@@ -76,7 +76,8 @@
 ├─ scripts/
 │  └─ check-free-plan.mjs    料金が発生する設定が無いか確かめる
 ├─ dev/                      開発用（公開ページではない）
-│  └─ parts.html             共通パーツのプレビュー
+│  ├─ parts.html             共通パーツのプレビュー
+│  └─ architecture.html      公開のしくみの図解
 ├─ CLOUDFLARE.md             公開のしくみと作業手順
 ├─ CODING_RULES.md           この文書
 ├─ package.json              npm スクリプト

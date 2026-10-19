@@ -9,16 +9,29 @@
 
 ## 1. 全体像
 
+```mermaid
+flowchart TD
+    A["利用者・投稿者<br />アカウント不要"] --> W
+    B["運営<br />合言葉で入る"] --> W
+
+    subgraph W["Cloudflare Workers（terraria-jp）★無料枠"]
+        P["手書きのページ<br />public/ をそのまま配信（無料・無制限）"]
+        D["動く部分（API）<br />一覧・記事・画像・投稿・下見・承認"]
+    end
+
+    D -->|読み書き| DB
+
+    subgraph DB["Cloudflare D1（terraria-jp）★無料枠"]
+        T1["columns<br />記事（本文・状態・投稿者）"]
+        T2["images<br />記事の画像（R2 は使わない）"]
+        T3["uploads<br />アップロードの回数（いたずら対策）"]
+        T4["logins<br />ログイン失敗の回数"]
+    end
 ```
-利用者 ─▶ Cloudflare Workers（terraria-jp）
-            ├─ public/ のページと素材 …… そのまま配信（無料・無制限）
-            └─ 動く部分（一覧・記事・画像・投稿・承認）
-                   └─ D1（terraria-jp）
-                        ├─ columns  記事（本文・状態・投稿者）
-                        ├─ images   記事の画像（R2 は使わない）
-                        ├─ uploads  画像アップロードの回数（いたずら対策）
-                        └─ logins   承認ページのログイン失敗の回数
-```
+
+色分けした図解（ブラウザで開く用）は [`dev/architecture.html`](./dev/architecture.html) にあります。
+公開サイトには出ません。ファイルをブラウザで直接開いてください（`dev/parts.html` と同じく、
+CSS と共通パーツは相対パスで読み込むので、そのまま動きます）。
 
 | 場所                   | URL                                                 |
 | ---------------------- | --------------------------------------------------- |
