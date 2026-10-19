@@ -13,6 +13,8 @@
 //   POST /api/columns           コラムの投稿（承認待ちで保存）
 //   POST /api/images            画像のアップロード
 //   POST /api/admin/...         運営の操作（承認・削除）
+//   GET  /recruit /recruit.html マルチ募集の一覧（Discord の写し）
+//   POST /api/internal/recruitments  Discord の bot から募集の一覧を受け取る
 //
 // 投稿は誰でもできる。公開は運営が承認したものだけ。
 // 置き場所はすべて無料枠の範囲（Workers と D1）で使う。上限を超えたときは
@@ -21,6 +23,7 @@
 
 import { renderMarkdown, buildExcerpt } from "./markdown.js";
 import { renderArticle, renderList, renderNotFound } from "./html.js";
+import { renderRecruitList } from "./recruit.js";
 
 /** 入力できる長さの上限 */
 const LIMITS = {
@@ -51,6 +54,13 @@ const SESSION_HOURS = 12;
 const LOGIN_FAILURES = 5;
 const LOGIN_WINDOW_MINUTES = 10;
 
+/** Discord の bot から募集を受け取るときの決まりごと */
+const SYNC_SECRET_HEADER = "x-sync-secret";
+const RECRUIT_SYNC_MAX_BYTES = 256 * 1024;
+const RECRUIT_MAX = 100;
+const RECRUIT_TEXT_MAX = 300;
+const RECRUIT_MESSAGE_MAX = 1000;
+
 export default {
     async fetch(request, env) {
         const url = new URL(request.url);
@@ -68,12 +78,21 @@ export default {
             const adminColumn = path.match(/^\/api\/admin\/columns\/([A-Za-z0-9-]+)$/);
             if (adminColumn) return await handleAdminAction(request, env, adminColumn[1]);
 
+            // Discord の bot から届く（サーバーどうしなので、Origin ではなく合言葉で確かめる）
+            if (path === "/api/internal/recruitments") {
+                return await handleRecruitSync(request, env);
+            }
+
             if (path === "/columns" || path === "/columns.html" || path === "/columns/") {
                 return await handleColumnList(env);
             }
 
             const article = path.match(/^\/columns\/([^/]+)\.html$/);
             if (article) return await handleColumnArticle(env, article[1]);
+
+            if (path === "/recruit" || path === "/recruit.html" || path === "/recruit/") {
+                return await handleRecruitList(env);
+            }
         } catch (error) {
             console.error("処理に失敗しました", path, error);
             return jsonResponse({ ok: false, message: "サーバー側で問題が起きました。" }, 500);
@@ -374,6 +393,152 @@ const handleImage = async (id, env) => {
             "cache-control": "public, max-age=31536000, immutable",
         },
     });
+};
+
+// マルチ募集（Discord の写し） -----------------------------------------------
+
+/**
+ * Discord の bot から、いま立っている募集の一覧を受け取る。
+ *
+ * 募集の持ち主は Discord 側なので、届いた内容で丸ごと入れ替える。
+ * 何度届いても同じ結果になり、途中で切れても中途半端な一覧は残らない。
+ */
+const handleRecruitSync = async (request, env) => {
+    if (request.method !== "POST") return methodNotAllowed("POST");
+
+    // 合言葉と同じ考え方。設定していなければ、誰も書き込めない。
+    if (!env.SYNC_SECRET) {
+        return jsonResponse({ ok: false, message: "同期の設定がされていません。" }, 503);
+    }
+
+    if (!isSame(request.headers.get(SYNC_SECRET_HEADER) ?? "", env.SYNC_SECRET)) {
+        return jsonResponse({ ok: false, message: "受け付けられませんでした。" }, 401);
+    }
+
+    const payload = await readJson(request, RECRUIT_SYNC_MAX_BYTES);
+    if (payload.error) return payload.error;
+
+    const now = new Date().toISOString();
+    const rows = toRecruitRows(payload.data, now);
+    if (rows.error) return jsonResponse({ ok: false, message: rows.error }, 400);
+
+    await env.DB.batch([
+        env.DB.prepare(`DELETE FROM recruitments`),
+        ...rows.data.map((row) =>
+            env.DB.prepare(
+                `INSERT INTO recruitments
+                     (id, guild_id, channel_id, message_id, mode, platform, vc,
+                      connection, message, author_id, author_name, author_icon, started_at, synced_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)`,
+            ).bind(
+                row.id,
+                row.guildId,
+                row.channelId,
+                row.messageId,
+                row.mode,
+                row.platform,
+                row.vc,
+                row.connection,
+                row.message,
+                row.authorId,
+                row.authorName,
+                row.authorIcon,
+                row.startedAt,
+                row.syncedAt,
+            ),
+        ),
+        // 1 件も無いときでも「最後にいつ届いたか」を出せるように残す
+        env.DB.prepare(
+            `INSERT INTO sync_state (key, value) VALUES ('recruitments_synced_at', ?1)
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+        ).bind(now),
+    ]);
+
+    return jsonResponse({ ok: true, count: rows.data.length });
+};
+
+/** Discord から届いた内容を、保存できる形に整える。おかしければメッセージを返す */
+const toRecruitRows = (payload, syncedAt) => {
+    const list = Array.isArray(payload?.recruitments) ? payload.recruitments : null;
+    if (!list) return { error: "募集の一覧が入っていません。" };
+
+    const guildId = trimTo(payload?.guildId, 32);
+    if (!guildId) return { error: "Discord のサーバー ID が入っていません。" };
+    if (list.length > RECRUIT_MAX) return { error: `募集は一度に ${RECRUIT_MAX} 件までです。` };
+
+    const data = [];
+    const seen = new Set();
+
+    for (const item of list) {
+        const id = trimTo(item?.id, 32);
+        // スレッド ID が無いものは Discord で辿れないので、出さない
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+
+        data.push({
+            id,
+            guildId,
+            channelId: trimTo(item?.channelId, 32),
+            messageId: trimTo(item?.messageId, 32),
+            mode: trimTo(item?.mode, 40),
+            platform: trimTo(item?.platform, 40),
+            vc: trimTo(item?.vc, 100),
+            connection: trimTo(item?.connection, RECRUIT_TEXT_MAX),
+            message: trimTo(item?.message, RECRUIT_MESSAGE_MAX),
+            authorId: trimTo(item?.authorId, 32),
+            authorName: trimTo(item?.authorName, 100),
+            authorIcon: trimTo(item?.authorIcon, 500),
+            startedAt: toIso(item?.startedAt, syncedAt),
+            syncedAt,
+        });
+    }
+
+    return { data };
+};
+
+/** いま立っている募集の一覧。新しい順に出す */
+const handleRecruitList = async (env) => {
+    const [list, state] = await Promise.all([
+        env.DB.prepare(
+            `SELECT id, guild_id, mode, platform, vc, connection, message,
+                    author_name, author_icon, started_at
+               FROM recruitments
+              ORDER BY started_at DESC
+              LIMIT ?1`,
+        )
+            .bind(RECRUIT_MAX)
+            .all(),
+        env.DB.prepare(`SELECT value FROM sync_state WHERE key = 'recruitments_synced_at'`).first(),
+    ]);
+
+    return htmlResponse(renderRecruitList((list.results ?? []).map(toRecruit), state?.value ?? ""));
+};
+
+/** DB の 1 行を、ページを組み立てるのに使う形にする */
+const toRecruit = (row) => ({
+    id: row.id,
+    guildId: row.guild_id ?? "",
+    mode: row.mode ?? "",
+    platform: row.platform ?? "",
+    vc: row.vc ?? "",
+    connection: row.connection ?? "",
+    message: row.message ?? "",
+    authorName: row.author_name ?? "",
+    authorIcon: row.author_icon ?? "",
+    startedAt: row.started_at ?? "",
+});
+
+/** 送られてきた値を、長さを切った文字列にする */
+const trimTo = (value, max) =>
+    String(value ?? "")
+        .trim()
+        .slice(0, max);
+
+/** 日時を ISO の形にする。読めないときは、代わりの時刻にする */
+const toIso = (value, fallback) => {
+    const time = Date.parse(String(value ?? ""));
+
+    return Number.isFinite(time) ? new Date(time).toISOString() : fallback;
 };
 
 // 運営（承認） ---------------------------------------------------------------

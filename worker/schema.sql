@@ -77,3 +77,45 @@ CREATE TABLE IF NOT EXISTS logins (
 
 CREATE INDEX IF NOT EXISTS idx_logins_ip
     ON logins (ip_hash, created_at);
+
+-- いま立っているマルチ募集。
+--
+-- 持ち主は Discord 側（bot がスレッドを集めて届ける）。ここはその写しなので、
+-- 届いた内容で丸ごと入れ替える。bot が止まれば、最後に届いた内容のまま残る。
+CREATE TABLE IF NOT EXISTS recruitments (
+    -- Discord のスレッド ID
+    id TEXT PRIMARY KEY,
+    guild_id TEXT NOT NULL DEFAULT '',
+    -- 募集を立てたチャンネル（tmod / コンソール / バニラ）
+    channel_id TEXT NOT NULL DEFAULT '',
+    -- 親のメッセージ ID
+    message_id TEXT NOT NULL DEFAULT '',
+    -- 募集の種類（モッドマルチ / バニラマルチ）
+    mode TEXT NOT NULL DEFAULT '',
+    -- 機種（PC / Switch / PS4 / XBOX / モバイル）
+    platform TEXT NOT NULL DEFAULT '',
+    -- 使う VC の名前
+    vc TEXT NOT NULL DEFAULT '',
+    -- SteamID か IP:Port（未定なら「なし」）
+    connection TEXT NOT NULL DEFAULT '',
+    -- ひとこと
+    message TEXT NOT NULL DEFAULT '',
+    author_id TEXT NOT NULL DEFAULT '',
+    author_name TEXT NOT NULL DEFAULT '',
+    author_icon TEXT NOT NULL DEFAULT '',
+    -- 募集を立てた時刻
+    started_at TEXT NOT NULL,
+    -- 最後に bot から届いた時刻
+    synced_at TEXT NOT NULL
+);
+
+-- 一覧は「新しい順」で引くので、その形に合わせる
+CREATE INDEX IF NOT EXISTS idx_recruitments_started
+    ON recruitments (started_at DESC);
+
+-- 同期の状態を持つ小さな置き場。
+-- 募集が 1 件も無いときでも「最後にいつ届いたか」を出せるようにする。
+CREATE TABLE IF NOT EXISTS sync_state (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);

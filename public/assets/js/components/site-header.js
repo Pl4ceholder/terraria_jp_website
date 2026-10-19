@@ -21,6 +21,11 @@ const NAV_ITEMS = [
         href: "./columns.html",
         match: (path) => path.includes("/columns/"),
     },
+    {
+        label: "マルチ募集",
+        href: "./recruit.html",
+        match: (path) => path.includes("/recruit"),
+    },
     { label: "サーバー紹介", href: "./server.html" },
     { label: "参加方法", href: "./join.html" },
 ];
