@@ -94,11 +94,13 @@ worker/                    動くページと API（Cloudflare Workers）
 ├─ index.js                入口（振り分けと API）
 ├─ html.js                 コラムの一覧・記事の HTML
 ├─ recruit.js              マルチ募集の HTML
+├─ events.js               「これからのイベント」を選ぶ条件
 ├─ markdown.js             Markdown → HTML
 ├─ schema.sql              保存場所の定義
 └─ seed.sql                動作確認用の記事
 scripts/                   補助のスクリプト
-└─ check-free-plan.mjs     料金が発生する設定が入っていないか確かめる
+├─ check-free-plan.mjs     料金が発生する設定が入っていないか確かめる
+└─ check-events.mjs        「これからのイベント」の選び方を確かめる
 dev/parts.html             共通パーツのプレビュー（開発用。公開されない）
 ```
 
@@ -115,8 +117,9 @@ dev/parts.html             共通パーツのプレビュー（開発用。公�
 ## 公開
 
 ```bash
-npm run check:free   # 無料枠だけで動くか確かめる
-npm run deploy       # Cloudflare Workers へ公開する
+npm run check:free     # 無料枠だけで動くか確かめる
+npm run check:events   # 「これからのイベント」の選び方を確かめる
+npm run deploy         # Cloudflare Workers へ公開する
 ```
 
 コラムは D1 に入っているので、記事が増えてもデプロイは要りません。
