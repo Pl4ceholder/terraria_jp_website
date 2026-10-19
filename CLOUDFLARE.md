@@ -13,11 +13,12 @@
 flowchart TD
     A["利用者・投稿者<br />アカウント不要"] --> W
     B["運営<br />合言葉で入る"] --> W
+    C["マイページを見る人<br />Discord でログイン"] -->|OAuth2（identify）| W
     BOT["Discord の bot<br />募集・イベント・実績を送る"] -->|SYNC_SECRET| W
 
     subgraph W["Cloudflare Workers（terraria-jp）★無料枠"]
         P["手書きのページ<br />public/ をそのまま配信（無料・無制限）"]
-        D["動く部分（API）<br />一覧・記事・画像・投稿・下見・承認"]
+        D["動く部分（API）<br />一覧・記事・画像・投稿・下見・承認・マイページ"]
     end
 
     D -->|読み書き| DB
@@ -44,6 +45,7 @@ CSS と共通パーツは相対パスで読み込むので、そのまま動き�
 | コラムの承認（運営用） | `/admin/columns`                                    |
 | マルチ募集の一覧       | `/recruit`                                          |
 | お知らせ               | `/news`                                             |
+| マイページ（実績）     | `/mypage`（Discord でログインした人だけ）           |
 
 記事は「承認待ち」で保存され、運営が承認したものだけが一覧に並びます。
 投稿にアカウントは要りません（誰でも投稿できます）。
@@ -98,6 +100,7 @@ npm run check:free          # 有料の設定が混ざっていないか確か�
 npm run check:events        # 「これからのイベント」の選び方が期待どおりか確かめる
 npm run check:recruit       # 「いま立っている募集」の選び方が期待どおりか確かめる
 npm run check:achievements  # 実績の取り込み方と、自分の実績の引き方が期待どおりか確かめる
+npm run check:mypage        # マイページのログイン（証の署名・期限・合言葉）が期待どおりか確かめる
 npm run deploy              # Cloudflare Workers へ公開する
 ```
 
@@ -164,6 +167,38 @@ npx wrangler secret put SYNC_SECRET   # bot とサイトに同じ文字列を入
   します（Discord で直接ロールをつけたときの食い違いを、そのまま出さないため）
 - 実績の付与は手動でたまにしか起きないので、bot は 30 分に 1 回だけ送ります。5 分ごとに送ると
   D1 の無料枠（1 日の書き込み行数）を無駄に使うためです（bot 側の `ACHIEVEMENT_SYNC_MINUTES`）
+
+### マイページのログイン（Discord のアプリを作る）
+
+マイページは「自分の実績」を見る場所なので、誰が見ているのかを知る必要があります。そのためだけに
+Discord のログイン（OAuth2）を使います。取るのはアカウント名とアイコンだけで、メールアドレスなどは
+取りません（`identify` という権限だけ）。
+
+1. https://discord.com/developers/applications を開き、「New Application」でアプリを作る
+2. 左の「OAuth2」を開き、「Redirects」に次を足す
+
+    ```
+    https://terraria-jp.terraria-jp-website.workers.dev/auth/discord/callback
+    ```
+
+3. 同じ画面の「CLIENT ID」を控える。「Reset Secret」で「CLIENT SECRET」を作って控える
+   （この 2 つは、人に見せてはいけない値です）
+4. Cloudflare に登録する
+
+    ```bash
+    npx wrangler secret put DISCORD_CLIENT_ID
+    npx wrangler secret put DISCORD_CLIENT_SECRET
+    ```
+
+5. ローカルで試すときは、`.dev.vars` にも同じ 2 つを書く
+
+- 2 つとも登録すると、`/mypage` に「Discord でログイン」が出ます。片方でも無いときは「ただいま
+  準備中です」（503）になり、誰も入れません（設定し忘れたまま開いてしまうのを防ぐためです）
+- ログインした人には、このサイトが署名した 30 日間のクッキー（`mypage_user`）を渡します。
+  D1 には何も書きません（無料枠の書き込みを使わないためです）
+- 証の鍵は `DISCORD_CLIENT_SECRET` です。Discord 側でシークレットを作り直すと、そのときに全員が
+  入れ直しになります。合言葉（`ADMIN_PASSWORD`）とは混ざりません
+- ログインのしくみ（署名・期限・行き来の合言葉）は `npm run check:mypage` で手元で確かめられます
 
 ### 保存場所に、あとから列や表を足す
 
@@ -243,13 +278,16 @@ npx wrangler d1 execute terraria-jp --local --command "SELECT id, title, status 
 | bot 側で「同期の設定がされていません」と出る（503）        | サイト側に `SYNC_SECRET` がまだ無い。登録する                                                                          |
 | マイページに実績が出ない                                   | bot がまだ送れていない（実績は 30 分に 1 回）。付与した直後は、少し待つ                                                |
 | 実績の名前が空になる                                       | Discord 側のロールが消えている。名前が引けないロールは送らないので、サイトからも消える                                 |
+| マイページが「ただいま準備中です」と出る                   | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` がまだ無い。`npx wrangler secret put` で入れる                           |
+| ログインすると「ログインできませんでした」と出る           | Discord のアプリの Redirects が `…/auth/discord/callback` と一致しているか見る。シークレットを作り直したら入れ直す     |
+| 「Discord 側の更新が止まっているかもしれません」と出る     | 90 分以上、実績が届いていない。bot（Render）が動いているか見る                                                         |
 
 ## 7. これからやること
 
 - **Discord 連携**: 次の 3 つを、動く単位ごとに足していく。
     - マルチ募集の一覧（`/recruit`）…… 済み
     - イベントのお知らせ（お知らせページの「これからのイベント」）…… 済み
-    - マイページ（自分の実績）…… 実績の受け取りは済み。Discord ログイン（OAuth2）とページがこれから
+    - マイページ（自分の実績）…… 済み（使うには、上の「マイページのログイン」の設定が要ります）
     - どれも、`SYNC_SECRET` をサイトと bot の両方に同じ文字列で登録しないと動きません
 - **GitHub Actions**: `origin`（`Pl4ceholder/terraria_jp_website`）は正しいので、あとは
   ワークフローを足すだけ。`develop` への push で `npm run check:free` と `npm run deploy`

@@ -98,6 +98,9 @@ worker/                    動くページと API（Cloudflare Workers）
 ├─ recruitments.js         「いま立っている募集」の選び方と、流れる時刻
 ├─ events.js               「これからのイベント」を選ぶ条件
 ├─ achievements.js         実績の取り込み方と、自分の実績の引き方
+├─ auth.js                 マイページの Discord ログイン（OAuth2）と、入っている証
+├─ mypage.js               マイページの HTML
+├─ signing.js              合言葉の見比べ方・クッキーの読み方・署名
 ├─ markdown.js             Markdown → HTML
 ├─ migrations/             すでに動いている DB に列や表を足す SQL
 ├─ schema.sql              保存場所の定義
@@ -106,7 +109,8 @@ scripts/                   補助のスクリプト
 ├─ check-free-plan.mjs     料金が発生する設定が入っていないか確かめる
 ├─ check-events.mjs        「これからのイベント」の選び方を確かめる
 ├─ check-recruit.mjs       「いま立っている募集」の選び方を確かめる
-└─ check-achievements.mjs  実績の取り込み方と引き方を確かめる
+├─ check-achievements.mjs  実績の取り込み方と引き方を確かめる
+└─ check-mypage.mjs        マイページのログイン（証の署名・期限・合言葉）を確かめる
 dev/parts.html             共通パーツのプレビュー（開発用。公開されない）
 ```
 
@@ -127,6 +131,7 @@ npm run check:free          # 無料枠だけで動くか確かめる
 npm run check:events        # 「これからのイベント」の選び方を確かめる
 npm run check:recruit       # 「いま立っている募集」の選び方を確かめる
 npm run check:achievements  # 実績の取り込み方と引き方を確かめる
+npm run check:mypage        # マイページのログイン（証の署名・期限・合言葉）を確かめる
 npm run deploy              # Cloudflare Workers へ公開する
 ```
 

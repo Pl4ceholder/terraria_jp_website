@@ -319,4 +319,5 @@ chore: Prettier と Stylelint を導入
 - [ ] 画像の `alt`、外部リンクの `rel` を確認した
 - [ ] `npm run check:free` が通る（料金が発生する設定が入っていない）
 - [ ] 動くページを変えたときは `npm run dev` で表示を確認した
+- [ ] Discord 連携まわりを変えたときは `check:events` / `check:recruit` / `check:achievements` / `check:mypage` が通る
 - [ ] コミットメッセージが `<type>(<scope>): <概要>` の形になっている
