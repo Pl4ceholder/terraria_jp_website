@@ -18,6 +18,7 @@ import {
     ACHIEVEMENT_LIST_SQL,
     ACHIEVEMENT_MAX,
     ACHIEVEMENT_MEMBERS_MAX,
+    MEMBER_NAME_MAX,
     toAchievementRows,
 } from "../worker/achievements.js";
 
@@ -34,7 +35,7 @@ const insertMaster = db.prepare(
     `INSERT INTO achievements (id, name, position, synced_at) VALUES (?1, ?2, ?3, ?4)`,
 );
 const insertMember = db.prepare(
-    `INSERT INTO member_achievements (user_id, unlocked, title, synced_at) VALUES (?1, ?2, ?3, ?4)`,
+    `INSERT INTO member_achievements (user_id, name, unlocked, title, synced_at) VALUES (?1, ?2, ?3, ?4, ?5)`,
 );
 
 /** 届いた内容を、本番と同じ手順で入れる。断られたらメッセージを返す */
@@ -49,7 +50,7 @@ const load = (payload) => {
         insertMaster.run(row.id, row.name, row.position, row.syncedAt);
     }
     for (const row of rows.data.members) {
-        insertMember.run(row.userId, row.unlocked, row.title, row.syncedAt);
+        insertMember.run(row.userId, row.name, row.unlocked, row.title, row.syncedAt);
     }
 
     return "";
@@ -70,6 +71,11 @@ const memberCount = () =>
 /** 保存されている称号（そのまま確かめたいとき用） */
 const rawTitle = (userId) =>
     db.prepare(`SELECT title FROM member_achievements WHERE user_id = ?1`).get(userId)?.title ??
+    "(なし)";
+
+/** 保存されている表示名（そのまま確かめたいとき用） */
+const rawName = (userId) =>
+    db.prepare(`SELECT name FROM member_achievements WHERE user_id = ?1`).get(userId)?.name ??
     "(なし)";
 
 let failed = 0;
@@ -96,13 +102,18 @@ const payload = {
     ],
     members: [
         // 順番はばらばらで、称号も付いている
-        { userId: "1", unlocked: [A2, A1], title: A2 },
-        // 1 つも持っていない人
-        { userId: "2", unlocked: [], title: "" },
+        { userId: "1", name: "たろう", unlocked: [A2, A1], title: A2 },
+        // 1 つも持っていない人（名前がまだ届いていない）
+        { userId: "2", name: "", unlocked: [], title: "" },
         // 実績の一覧に無い ID（消えたロール）と、無いものを称号にしている人
-        { userId: "3", unlocked: [A1, "9999999999999999999"], title: "9999999999999999999" },
+        {
+            userId: "3",
+            name: "じろう",
+            unlocked: [A1, "9999999999999999999"],
+            title: "9999999999999999999",
+        },
         // 同じ人がもう一度出てきた（あとのものは入れない）
-        { userId: "1", unlocked: [A1, A2, A3], title: A3 },
+        { userId: "1", name: "たろう（別名）", unlocked: [A1, A2, A3], title: A3 },
     ],
 };
 
@@ -124,6 +135,25 @@ check(
     "称号は、解放済みのものだけ残る",
     rawTitle("1") === A2 && rawTitle("3") === "",
     `1: ${rawTitle("1")} ／ 3: ${rawTitle("3")}`,
+);
+check(
+    "表示名も保存する（管理画面で使う）",
+    rawName("1") === "たろう" && rawName("3") === "じろう",
+    `1: ${rawName("1")} ／ 3: ${rawName("3")}`,
+);
+check("名前が無くても保存できる", rawName("2") === "", rawName("2"));
+
+// 長すぎる名前は切って保存する（一覧が崩れないように）
+const longName = "あ".repeat(MEMBER_NAME_MAX + 10);
+load({
+    guildId: "999000111222333444",
+    achievements: [{ id: A1, name: "ビギナー" }],
+    members: [{ userId: "5", name: longName, unlocked: [A1], title: "" }],
+});
+check(
+    "長すぎる名前は切って保存する",
+    rawName("5").length === MEMBER_NAME_MAX,
+    `長さ: ${rawName("5").length}`,
 );
 
 // --- 2. 区切りの取り違え ---------------------------------------------------

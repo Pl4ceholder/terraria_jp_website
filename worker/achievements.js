@@ -20,6 +20,9 @@ export const ACHIEVEMENT_MEMBERS_MAX = 500;
 /** 実績の名前の長さ（Discord のロール名は 100 文字まで） */
 export const ACHIEVEMENT_NAME_MAX = 100;
 
+/** 人の表示名の長さ（Discord の表示名。管理画面で相手を選ぶときに使う） */
+export const MEMBER_NAME_MAX = 80;
+
 /**
  * Discord の bot から届いた内容を、保存できる形に整える。
  *
@@ -78,6 +81,7 @@ export const toAchievementRows = (payload, syncedAt) => {
 
         rowsMembers.push({
             userId,
+            name: trimTo(item?.name, MEMBER_NAME_MAX),
             unlocked: unlocked.join(","),
             // 称号は、解放済みのものしか付けられない（食い違っていたら付けていない扱い）
             title: unlocked.includes(title) ? title : "",
@@ -103,6 +107,37 @@ export const ACHIEVEMENT_LIST_SQL = `
       FROM achievements a
       LEFT JOIN member_achievements m ON m.user_id = ?1
      ORDER BY a.position, a.id
+`;
+
+/**
+ * 管理画面で使う、人の一覧（実績を持っている人だけ）。
+ *
+ * 名前がまだ届いていない人（先に登録された人など）は後ろに回す。名前は Discord の
+ * 表示名なので、大文字小文字をまとめて並べる。
+ */
+const MEMBER_COLUMNS = `m.user_id, m.name, m.title, m.unlocked`;
+
+export const MEMBER_LIST_SQL = `
+    SELECT ${MEMBER_COLUMNS}
+      FROM member_achievements m
+     ORDER BY m.name = '', m.name COLLATE NOCASE, m.user_id
+     LIMIT 200
+`;
+
+/** 名前の一部で探す（管理画面の絞り込み） */
+export const MEMBER_SEARCH_SQL = `
+    SELECT ${MEMBER_COLUMNS}
+      FROM member_achievements m
+     WHERE instr(m.name, ?1) > 0
+     ORDER BY m.name COLLATE NOCASE, m.user_id
+     LIMIT 50
+`;
+
+/** 1 人だけ引く（実績を持っていない人なら空が返る。呼ぶ側は「まだ無い人」として扱う） */
+export const MEMBER_ONE_SQL = `
+    SELECT ${MEMBER_COLUMNS}
+      FROM member_achievements m
+     WHERE m.user_id = ?1
 `;
 
 /** 文字列を、長さを切って整える */

@@ -177,12 +177,48 @@ CREATE TABLE IF NOT EXISTS achievements (
 CREATE TABLE IF NOT EXISTS member_achievements (
     -- Discord のユーザー ID
     user_id TEXT PRIMARY KEY,
+    -- Discord の表示名（管理画面で相手を選ぶときに使う）
+    name TEXT NOT NULL DEFAULT '',
     -- 解放済みの実績 ID（例: "1543500048245981275,1543500112456585267"）
     unlocked TEXT NOT NULL DEFAULT '',
     -- いま称号としてつけている実績 ID（つけていなければ空）
     title TEXT NOT NULL DEFAULT '',
     synced_at TEXT NOT NULL
 );
+
+-- Web からの操作の依頼。
+--
+-- サイトは Discord を触らない。ここに依頼を 1 行置くだけで、bot が 30 秒ごとに
+-- 拾って Discord に反映し、結果を書き戻す。依頼は bot が処理するまで残るので、
+-- bot が止まっていても操作が消えない。
+CREATE TABLE IF NOT EXISTS achievement_requests (
+    -- 依頼の番号（古い順に処理する）
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- title（称号の着脱） / unlock（実績の付与・剥奪）
+    kind TEXT NOT NULL,
+    -- title: set / clear ／ unlock: grant / revoke
+    action TEXT NOT NULL,
+    -- 相手の Discord のユーザー ID
+    user_id TEXT NOT NULL,
+    -- 称号・実績のロール ID（外すときは空）
+    role_id TEXT NOT NULL DEFAULT '',
+    -- どこから来た依頼か（mypage / admin）
+    source TEXT NOT NULL DEFAULT '',
+    requested_at TEXT NOT NULL,
+    -- pending（依頼中） / done（反映した） / failed（失敗） / expired（古すぎた）
+    status TEXT NOT NULL DEFAULT 'pending',
+    finished_at TEXT,
+    -- 画面に出す理由（失敗したとき）
+    message TEXT NOT NULL DEFAULT ''
+);
+
+-- bot は「まだ処理していないもの」を古い順に引く
+CREATE INDEX IF NOT EXISTS idx_achievement_requests_status
+    ON achievement_requests (status, id);
+
+-- 画面は「その人の依頼」を新しい順に引く
+CREATE INDEX IF NOT EXISTS idx_achievement_requests_user
+    ON achievement_requests (user_id, id DESC);
 
 -- 同期の状態を持つ小さな置き場。
 -- 募集が 1 件も無いときでも「最後にいつ届いたか」を出せるようにする。

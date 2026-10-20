@@ -18,7 +18,12 @@
 //   GET  /api/events            これからのイベント（お知らせページが取りに来る）
 //   POST /api/internal/events   Discord の bot からイベントを受け取る
 //   POST /api/internal/achievements  Discord の bot から実績を受け取る（マイページ用）
+//   GET  /api/internal/requests  Discord の bot が、Web からの依頼（実績・称号）を拾う
+//   POST /api/internal/requests/<id>  Discord の bot が、依頼の結果を書き戻す
 //   GET  /mypage /mypage.html   マイページ（Discord でログインした人だけ）
+//   POST /mypage/title          称号の着脱の依頼を置く（反映するのは bot）
+//   GET  /admin/achievements    実績の付与・剥奪（合言葉で入った人だけ）
+//   POST /admin/achievements    付与・剥奪の依頼を置く（反映するのは bot）
 //   GET  /auth/discord          Discord の認証画面へ送る
 //   GET  /auth/discord/callback 認証から戻ってきた人に、入っている証を渡す
 //   POST /auth/logout           出る
@@ -29,7 +34,30 @@
 // ==========================================================================
 
 import { EVENT_LIST_SQL } from "./events.js";
-import { ACHIEVEMENT_LIST_SQL, toAchievementRows } from "./achievements.js";
+import {
+    ACHIEVEMENT_LIST_SQL,
+    MEMBER_LIST_SQL,
+    MEMBER_ONE_SQL,
+    MEMBER_SEARCH_SQL,
+    toAchievementRows,
+} from "./achievements.js";
+import {
+    parseUserId,
+    REQUEST_CLEANUP_SQL,
+    REQUEST_FINISH_SQL,
+    REQUEST_INSERT_SQL,
+    REQUEST_LAST_FOR_USER_SQL,
+    REQUEST_LIST_MAX,
+    REQUEST_PENDING_FOR_USER_SQL,
+    REQUEST_PENDING_SQL,
+    REQUEST_DUPLICATE_SQL,
+    REQUEST_PENDING_ANY_SQL,
+    toRequest,
+    toRequestList,
+    toRequestView,
+    toResult,
+} from "./requests.js";
+import { renderAdminAchievements } from "./admin-achievements.js";
 import {
     buildAuthorizeUrl,
     buildStateCookie,
@@ -107,6 +135,12 @@ const EVENT_GRACE_HOURS = 12;
 /** Discord の bot から実績を受け取るときの決まりごと（数の上限は achievements.js にある） */
 const ACHIEVEMENT_SYNC_MAX_BYTES = 128 * 1024;
 
+/** Web からの依頼（実績の付与・称号の着脱）を、処理したあと残しておく日数 */
+const REQUEST_KEEP_DAYS = 7;
+
+/** bot が書き戻す結果の大きさ */
+const REQUEST_RESULT_MAX_BYTES = 4096;
+
 export default {
     async fetch(request, env) {
         const url = new URL(request.url);
@@ -145,6 +179,20 @@ export default {
             if (path === "/api/internal/achievements") {
                 return await handleAchievementSync(request, env);
             }
+
+            // Web からの依頼（実績の付与・称号の着脱）。bot が拾って Discord に反映する
+            if (path === "/api/internal/requests") {
+                return await handleRequestList(request, env);
+            }
+
+            const requestResult = path.match(/^\/api\/internal\/requests\/(\d+)$/);
+            if (requestResult) {
+                return await handleRequestResult(request, env, Number(requestResult[1]));
+            }
+
+            if (path === "/mypage/title") return await handleTitleRequest(request, env);
+
+            if (path === "/admin/achievements") return await handleAdminAchievements(request, env);
 
             // お知らせページが取りに来る
             if (path === "/api/events") {
@@ -822,6 +870,11 @@ const handleAchievementSync = async (request, env) => {
             `INSERT INTO sync_state (key, value) VALUES ('achievements_synced_at', ?1)
                  ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
         ).bind(now),
+        // 片付ける依頼は、このついでに消す（残しておく理由が無いので）。
+        // まだ処理していない依頼（pending）は消さない。
+        env.DB.prepare(REQUEST_CLEANUP_SQL).bind(
+            new Date(Date.now() - REQUEST_KEEP_DAYS * 24 * 60 * 60 * 1000).toISOString(),
+        ),
     ]);
 
     return jsonResponse({
@@ -829,6 +882,52 @@ const handleAchievementSync = async (request, env) => {
         achievements: rows.data.master.length,
         members: rows.data.members.length,
     });
+};
+
+// Web からの依頼（実績の付与・称号の着脱） -----------------------------------
+
+/**
+ * bot が、まだ処理していない依頼を拾いに来る。
+ *
+ * サイトは Discord を触らないので、Web の操作はここに依頼として溜まる。bot が 30 秒
+ * ごとに取りに来て、Discord に反映し、結果を書き戻す（POST /api/internal/requests/<id>）。
+ * bot が止まっている間も依頼は残るので、操作が消えることはない。
+ */
+const handleRequestList = async (request, env) => {
+    if (request.method !== "GET") return methodNotAllowed("GET");
+    if (!env.SYNC_SECRET) {
+        return jsonResponse({ ok: false, message: "同期の設定がされていません。" }, 503);
+    }
+    if (!isSame(request.headers.get(SYNC_SECRET_HEADER) ?? "", env.SYNC_SECRET)) {
+        return jsonResponse({ ok: false, message: "受け付けられませんでした。" }, 401);
+    }
+
+    const { results } = await env.DB.prepare(REQUEST_PENDING_SQL).bind(REQUEST_LIST_MAX).all();
+
+    return jsonResponse({ ok: true, requests: toRequestList(results) });
+};
+
+/** bot が、依頼の結果を書き戻す。すでに処理済みのものは上書きしない */
+const handleRequestResult = async (request, env, id) => {
+    if (request.method !== "POST") return methodNotAllowed("POST");
+    if (!env.SYNC_SECRET) {
+        return jsonResponse({ ok: false, message: "同期の設定がされていません。" }, 503);
+    }
+    if (!isSame(request.headers.get(SYNC_SECRET_HEADER) ?? "", env.SYNC_SECRET)) {
+        return jsonResponse({ ok: false, message: "受け付けられませんでした。" }, 401);
+    }
+
+    const payload = await readJson(request, REQUEST_RESULT_MAX_BYTES);
+    if (payload.error) return payload.error;
+
+    const parsed = toResult(payload.data);
+    if (parsed.error) return jsonResponse({ ok: false, message: parsed.error }, 400);
+
+    const result = await env.DB.prepare(REQUEST_FINISH_SQL)
+        .bind(parsed.data.status, new Date().toISOString(), parsed.data.message, id)
+        .run();
+
+    return jsonResponse({ ok: true, changed: result.meta?.changes ?? 0 });
 };
 
 // マイページ（Discord でログインした人だけ） ---------------------------------
@@ -845,9 +944,11 @@ const handleMypage = async (request, env) => {
     const user = await readUserSession(request, env);
     if (!user) return htmlResponse(renderLogin());
 
-    const [list, state] = await Promise.all([
+    const [list, state, pending, last] = await Promise.all([
         env.DB.prepare(ACHIEVEMENT_LIST_SQL).bind(user.id).all(),
         env.DB.prepare(`SELECT value FROM sync_state WHERE key = 'achievements_synced_at'`).first(),
+        env.DB.prepare(REQUEST_PENDING_FOR_USER_SQL).bind(user.id, "title").first(),
+        env.DB.prepare(REQUEST_LAST_FOR_USER_SQL).bind(user.id, "title").first(),
     ]);
 
     return htmlResponse(
@@ -855,8 +956,59 @@ const handleMypage = async (request, env) => {
             user,
             achievements: list.results ?? [],
             syncedAt: state?.value ?? "",
+            pending: toRequestView(pending),
+            result: toRequestView(last),
         }),
     );
+};
+
+/**
+ * マイページからの称号の着脱。
+ *
+ * ここでは Discord を触らない。依頼を 1 行置くだけで、反映するのは bot（30 秒ごと）。
+ * 着けられるのは、自分が解放している実績だけ（bot から届いた写しで確かめる）。
+ * 反映待ちのものがあるうちは、重ねて置かない（待っていることが画面に出る）。
+ */
+const handleTitleRequest = async (request, env) => {
+    if (!isConfigured(env)) return authUnavailable();
+    if (request.method !== "POST") return methodNotAllowed("POST");
+    if (!isSameOrigin(request)) return forbidden();
+
+    const user = await readUserSession(request, env);
+    if (!user) return redirectTo("/mypage");
+
+    const form = await readForm(request);
+    if (form.error) return redirectTo("/mypage");
+
+    const asked = String(form.data.get("role_id") ?? "");
+    const { results } = await env.DB.prepare(ACHIEVEMENT_LIST_SQL).bind(user.id).all();
+    const unlocked = (results ?? []).filter((row) => Number(row.unlocked) === 1);
+
+    // 「外す」はいつでも通す（着けていないものを外しても害が無い）。
+    // 「着ける」は、自分が解放している実績のときだけ。
+    const clear = asked === "none";
+    if (!clear && !unlocked.some((row) => row.id === asked)) {
+        console.error("着けられない実績が指定されました", user.id, asked);
+        return redirectTo("/mypage");
+    }
+
+    const parsed = toRequest({
+        kind: "title",
+        action: clear ? "clear" : "set",
+        userId: user.id,
+        roleId: clear ? "" : asked,
+        source: "mypage",
+    });
+    if (parsed.error) return redirectTo("/mypage");
+
+    const pending = await env.DB.prepare(REQUEST_PENDING_FOR_USER_SQL)
+        .bind(user.id, "title")
+        .first();
+    if (pending) return redirectTo("/mypage");
+
+    await insertRequest(env, parsed.data);
+
+    return redirectTo("/mypage");
 };
 
 /** Discord の認証画面へ送る。合言葉（state）をクッキーに入れて、戻ってきたときに見比べる */
@@ -1088,6 +1240,117 @@ const sumByStatus = (rows) => {
     return counts;
 };
 
+// 実績の付与・剥奪（運営用） -------------------------------------------------
+
+/**
+ * 実績の付与・剥奪。
+ *
+ *   GET  …… 相手を選ぶ画面。相手を選ぶと、その人の実績とボタンが出る
+ *   POST …… 付与・剥奪の依頼を 1 行置く（Discord に反映するのは bot）
+ *
+ * 合言葉で入っていない人は、コラムの承認と同じ入口（/admin/columns）へ送る。
+ */
+const handleAdminAchievements = async (request, env) => {
+    if (!(await isAdmin(request, env))) return redirectTo("/admin/columns");
+
+    if (request.method === "GET") {
+        return htmlResponse(await renderAdminAchievementsPage(request, env));
+    }
+    if (request.method === "POST") return await createUnlockRequest(request, env);
+
+    return methodNotAllowed("GET, POST");
+};
+
+/**
+ * 相手を選ぶ画面の HTML。
+ *
+ * 「q」が Discord の ID（かメンション）なら、その人を直接開く。名前の一部なら、
+ * その文字を含む人を出す。options.userId は、書き込みに失敗したときなどに
+ * 同じ人をもう一度出すために使う。
+ */
+const renderAdminAchievementsPage = async (request, env, options = {}) => {
+    const params = new URL(request.url).searchParams;
+    const query = (params.get("q") ?? "").trim().slice(0, 40);
+    const error = options.error ?? "";
+    const userId = options.userId ?? parseUserId(params.get("user") || query);
+
+    if (!userId) {
+        const { results } = query
+            ? await env.DB.prepare(MEMBER_SEARCH_SQL).bind(query).all()
+            : await env.DB.prepare(MEMBER_LIST_SQL).all();
+
+        return renderAdminAchievements({ query, members: results ?? [], error });
+    }
+
+    const [list, member, pending, last] = await Promise.all([
+        env.DB.prepare(ACHIEVEMENT_LIST_SQL).bind(userId).all(),
+        env.DB.prepare(MEMBER_ONE_SQL).bind(userId).first(),
+        env.DB.prepare(REQUEST_PENDING_ANY_SQL).bind(userId).first(),
+        env.DB.prepare(REQUEST_LAST_FOR_USER_SQL).bind(userId, "unlock").first(),
+    ]);
+
+    return renderAdminAchievements({
+        query,
+        userId,
+        member: member ?? null,
+        rows: list.results ?? [],
+        pending: toRequestView(pending),
+        result: toRequestView(last),
+        error,
+    });
+};
+
+/** 付与・剥奪の依頼を置く。置けたら、その人の画面へ戻す */
+const createUnlockRequest = async (request, env) => {
+    if (!isSameOrigin(request)) return forbidden();
+
+    const form = await readForm(request);
+    if (form.error) return htmlResponse(renderAdminAchievements({ error: form.error }), 400);
+
+    const parsed = toRequest({
+        kind: "unlock",
+        action: String(form.data.get("action") ?? ""),
+        userId: String(form.data.get("user_id") ?? ""),
+        roleId: String(form.data.get("role_id") ?? ""),
+        source: "admin",
+    });
+
+    if (parsed.error) {
+        console.error("実績の操作を受け付けられませんでした", parsed.error);
+        return htmlResponse(
+            await renderAdminAchievementsPage(request, env, {
+                userId: parseUserId(form.data.get("user_id")),
+                error: parsed.error,
+            }),
+            400,
+        );
+    }
+
+    // 実績の一覧に無い ID は置かない（消えたロールを、いつまでも付けようとしない）
+    const known = await env.DB.prepare(`SELECT id FROM achievements WHERE id = ?1`)
+        .bind(parsed.data.roleId)
+        .first();
+
+    if (!known) {
+        return htmlResponse(
+            await renderAdminAchievementsPage(request, env, {
+                userId: parsed.data.userId,
+                error: "その実績は、いまの一覧にありません。画面を開き直してください。",
+            }),
+            400,
+        );
+    }
+
+    // 二度押しで同じ依頼が並ばないようにする（すでに待っていれば、何もしない）
+    const duplicate = await env.DB.prepare(REQUEST_DUPLICATE_SQL)
+        .bind(parsed.data.userId, parsed.data.roleId, parsed.data.action)
+        .first();
+
+    if (!duplicate) await insertRequest(env, parsed.data);
+
+    return redirectTo(`/admin/achievements?user=${encodeURIComponent(parsed.data.userId)}`);
+};
+
 // 共通の道具 ----------------------------------------------------------------
 
 /** いたずら対策。IP そのものは残さず、毎回同じ値になる形にして保存する */
@@ -1162,6 +1425,21 @@ const recordLoginFailure = async (env, ipHash) => {
 const unauthorized = () => jsonResponse({ ok: false, message: "合言葉を入れてください。" }, 401);
 
 const forbidden = () => jsonResponse({ ok: false, message: "受け付けられませんでした。" }, 403);
+
+/** フォームを読む。壊れていても、ページを出せるようにする */
+const readForm = async (request) => {
+    try {
+        return { data: await request.formData() };
+    } catch {
+        return { error: "送信された内容を読めませんでした。" };
+    }
+};
+
+/** 依頼を 1 行置く（実績の付与・剥奪、称号の着脱）。反映するのは bot */
+const insertRequest = (env, row) =>
+    env.DB.prepare(REQUEST_INSERT_SQL)
+        .bind(row.kind, row.action, row.userId, row.roleId, row.source, new Date().toISOString())
+        .run();
 
 /** JSON を読む。大きすぎるものは読み込まずに断る */
 const readJson = async (request, maxBytes) => {

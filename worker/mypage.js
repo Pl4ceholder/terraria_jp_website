@@ -18,17 +18,47 @@ export const MYPAGE_TITLE = "マイページ";
 /** 最終更新から、この分数を過ぎたら「古いかもしれない」と伝える（bot は 30 分ごとに送る） */
 const STALE_MINUTES = 90;
 
-/** 実績 1 件。いま称号にしているものには印を付ける */
-const renderAchievement = (achievement) => {
-    const worn =
-        Number(achievement.worn) === 1
-            ? `
+/** 結果を出しておく時間（分）。過ぎたら消す */
+const NOTICE_MINUTES = 10;
+
+/** 反映を待っている間、この秒数で画面を読み直す（javascript を使わずに済ませる） */
+const REFRESH_SECONDS = 5;
+
+/** これ以上かかっていたら、bot が動いていないかもしれないと伝える（秒） */
+const SLOW_SECONDS = 120;
+
+/** 反映中の依頼を、短い日本語にする */
+const pendingText = (pending, nameOf) =>
+    pending.action === "clear"
+        ? "称号を外しています。"
+        : `称号を「${nameOf(pending.roleId)}」に変えています。`;
+
+/** 実績 1 件。いま称号にしているものには印を付けて、着け外しのボタンを出す */
+const renderAchievement = (achievement, { waiting, nameOf }) => {
+    const worn = Number(achievement.worn) === 1;
+    const badge = worn
+        ? `
                                 <span class="p-mypage__badge">装着中</span>`
-            : "";
+        : "";
     const name = escapeHtml(achievement.name || "名前なし");
 
+    // 反映待ちの間は押せないようにして、二重に出さない（見た目は CSS で変える）
+    const button = worn
+        ? `<button class="c-button c-button--small" type="submit"${
+              waiting ? " disabled" : ""
+          }>称号を外す</button>`
+        : `<button class="c-button c-button--small" type="submit"${
+              waiting ? " disabled" : ""
+          }>称号にする</button>`;
+
     return `                            <li class="p-mypage__item">
-                                <span class="p-mypage__achievement">${name}</span>${worn}
+                                <span class="p-mypage__achievement">${name}</span>${badge}
+                                <form class="p-mypage__action" method="post" action="/mypage/title">
+                                    <input type="hidden" name="role_id" value="${
+                                        worn ? "none" : escapeHtml(achievement.id)
+                                    }" />
+                                    ${button}
+                                </form>
                             </li>`;
 };
 
@@ -38,7 +68,7 @@ const renderAchievement = (achievement) => {
  * 出すのは解放済みのものだけ（まだのものは出さない）。実績そのものがまだ届いていない
  * ときは、そう伝える（「まだ持っていない」と見分けが付くように）。
  */
-const renderAchievements = (achievements) => {
+const renderAchievements = (achievements, { waiting, nameOf }) => {
     if (achievements.length === 0) {
         return `                        <p class="p-mypage__empty">
                             いま実績の準備中です。Discord の運営が実績を設定すると、ここに出ます。
@@ -53,16 +83,48 @@ const renderAchievements = (achievements) => {
                         </p>`;
     }
 
-    const note = unlocked.some((achievement) => Number(achievement.worn) === 1)
-        ? `
-                        <p class="p-mypage__note">
-                            「装着中」は、いま Discord で称号にしている実績です。
-                        </p>`
-        : "";
+    const note = `                        <p class="p-mypage__note">
+                            「装着中」は、いま Discord で称号にしている実績です。付けられるのは同時に 1 つまでです。
+                        </p>`;
 
     return `                        <ul class="p-mypage__list">
-${unlocked.map(renderAchievement).join("\n")}
+${unlocked.map((achievement) => renderAchievement(achievement, { waiting, nameOf })).join("\n")}
                         </ul>${note}`;
+};
+
+/**
+ * 反映待ちと、直前の結果。
+ *
+ * 反映するのは bot なので、押した直後はまだ変わらない。待っていることを伝えて、
+ * 終わったら結果を出す（そのまま自動で読み直すので、押し直さなくてよい）。
+ */
+const renderNotice = ({ pending, result, now, nameOf }) => {
+    if (pending) {
+        const slow = now - Date.parse(pending.requestedAt) > SLOW_SECONDS * 1000;
+        const warning = slow
+            ? `
+                            <br />
+                            <span class="p-mypage__warning"
+                                >時間がかかっています。Discord 側の反映が止まっているかもしれません。</span
+                            >`
+            : "";
+
+        return `                        <p class="p-mypage__notice" role="status">
+                            ${escapeHtml(pendingText(pending, nameOf))}30 秒ほどで反映されます（この画面は自動で更新します）。${warning}
+                        </p>`;
+    }
+
+    if (!result?.finishedAt) return "";
+    if (now - Date.parse(result.finishedAt) > NOTICE_MINUTES * 60 * 1000) return "";
+
+    const done = result.status === "done";
+    const message = result.message || (done ? "反映しました。" : "反映できませんでした。");
+
+    return `                        <p class="p-mypage__notice p-mypage__notice--${
+        done ? "done" : "failed"
+    }" role="status">
+                            ${escapeHtml(message)}
+                        </p>`;
 };
 
 /** 最終更新の案内。古くなっていたら、そのことも伝える */
@@ -88,19 +150,30 @@ const renderUpdated = (syncedAt, now) => {
 };
 
 /** ログインしている人のページ */
-export const renderMypage = ({ user, achievements, syncedAt, now = Date.now() }) => {
+export const renderMypage = ({
+    user,
+    achievements,
+    syncedAt,
+    now = Date.now(),
+    pending = null,
+    result = null,
+}) => {
     const icon = user.avatar
         ? `<img class="p-mypage__avatar" src="${escapeHtml(
               user.avatar,
           )}" alt="" width="64" height="64" />`
         : "";
+    // 依頼にはロール ID しか入っていないので、画面に出す名前は一覧から引く
+    const nameOf = (roleId) =>
+        achievements.find((achievement) => achievement.id === roleId)?.name || "実績";
+    const waiting = pending !== null;
 
     const body = `            <header class="c-page-header">
                 <div class="l-container l-container--narrow">
                     <p class="c-page-header__lead">${SITE_NAME} の Discord</p>
                     <h1 class="c-page-header__title">${MYPAGE_TITLE}</h1>
                     <p class="c-page-header__text">
-                        あなたが解放した実績の一覧です。解放した実績は、Discord で称号として付けられます。
+                        あなたが解放した実績の一覧です。ここから、称号として着け外しできます。
                     </p>
                 </div>
             </header>
@@ -120,7 +193,10 @@ export const renderMypage = ({ user, achievements, syncedAt, now = Date.now() })
 
                     <section class="p-mypage__section">
                         <h2 class="p-mypage__heading">解放した実績</h2>
-${renderUpdated(syncedAt, now)}${renderAchievements(achievements)}
+${renderNotice({ pending, result, now, nameOf })}${renderUpdated(syncedAt, now)}${renderAchievements(
+        achievements,
+        { waiting, nameOf },
+    )}
                     </section>
                 </div>
             </div>`;
@@ -128,6 +204,8 @@ ${renderUpdated(syncedAt, now)}${renderAchievements(achievements)}
     return layout({
         title: `${MYPAGE_TITLE} | ${SITE_NAME}`,
         description: `${SITE_NAME} のマイページです。Discord で解放した実績を見られます。`,
+        // 反映待ちの間だけ、勝手に読み直す
+        refreshSeconds: waiting ? REFRESH_SECONDS : 0,
         body,
     });
 };

@@ -85,6 +85,26 @@
     color: var(--color-accent);
 }
 
+/* 反映待ちと、直前の結果 ------------------------------------------------ */
+
+.p-mypage__notice {
+    margin-block-end: var(--space-s);
+    padding: var(--space-xs) var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-s);
+}
+
+.p-mypage__notice--done {
+    color: var(--color-primary);
+    border-color: var(--color-primary-dark);
+}
+
+.p-mypage__notice--failed {
+    color: var(--color-danger);
+    border-color: var(--color-danger);
+}
+
 .p-mypage__empty {
     padding-block: var(--space-m);
     color: var(--color-text-muted);
@@ -120,10 +140,14 @@
 
 /* いま称号にしているものは、一覧の中で見分けられるようにする */
 .p-mypage__badge {
-    margin-inline-start: auto;
     padding: 0.1em 0.75em;
     color: var(--color-primary);
     font-size: 0.85rem;
     border: 1px solid var(--color-primary-dark);
     border-radius: var(--radius-pill);
+}
+
+/* 着け外しのボタンは、実績の名前の反対側に寄せる */
+.p-mypage__action {
+    margin-inline-start: auto;
 }

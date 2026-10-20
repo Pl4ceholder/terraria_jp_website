@@ -14,14 +14,32 @@ export const SITE_NAME = "Terraria JP";
 export const COLUMNS_TITLE = "コラム";
 
 /** ページの外側（<head> と共通パーツ） */
-export const layout = ({ title, description, body }) => `<!doctype html>
+export const layout = ({
+    title,
+    description,
+    body,
+    refreshSeconds = 0,
+    noindex = false,
+}) => `<!doctype html>
 <html lang="ja">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>${escapeHtml(title)}</title>
-        <meta name="description" content="${escapeHtml(description)}" />
-        <link rel="stylesheet" href="/assets/css/style.css" />
+        <meta name="description" content="${escapeHtml(description)}" />${
+            noindex
+                ? `
+        <!-- 運営用。検索からは入れないようにしておく（合言葉とは別の話） -->
+        <meta name="robots" content="noindex" />`
+                : ""
+        }
+        <link rel="stylesheet" href="/assets/css/style.css" />${
+            Number(refreshSeconds) > 0
+                ? `
+        <!-- 反映待ちの間だけ、勝手に読み直す（javascript を使わずに済ませる） -->
+        <meta http-equiv="refresh" content="${Number(refreshSeconds)}" />`
+                : ""
+        }
     </head>
 
     <body>
