@@ -161,7 +161,7 @@
     font-size: 0.85rem;
 }
 
-/* 「開始」「承認待ち」などの小さな札 */
+/* 「開始」などの小さな札 */
 .c-activity__badge {
     padding: 0.1em 0.6em;
     color: var(--color-on-primary);
@@ -195,9 +195,55 @@
     padding-block-end: 0;
 }
 
-/* 承認待ちの書き込みは、まだ出ていないことが分かるように薄くする */
-.c-activity--pending .c-activity__text {
-    opacity: 0.75;
+/* 本文を書く道具（下見・画像） ----------------------------------------- */
+
+/* 活動を書くページ（/activities/new）と、書き足すフォームの両方で使う */
+.c-editor__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs) var(--space-s);
+    align-items: center;
+}
+
+.c-editor__hint {
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+}
+
+.c-editor__preview {
+    min-height: 4rem;
+    padding: var(--space-s);
+    background-color: var(--color-surface-alt);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-s);
+}
+
+.c-editor__preview-title {
+    margin-block-end: var(--space-xs);
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+}
+
+/* まだ何も書いていないときの案内 */
+.c-editor__preview .c-prose:empty::before {
+    color: var(--color-text-muted);
+    content: "本文を書くと、ここに下見が出ます。";
+}
+
+.c-editor__message {
+    padding: var(--space-xs) var(--space-s);
+    background-color: var(--color-surface-alt);
+    border-radius: var(--radius-s);
+}
+
+.c-editor__message--error {
+    color: var(--color-danger);
+    border: 1px solid var(--color-danger);
+}
+
+.c-editor__message--success {
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
 }
 
 /* 下層ページの導入（見出し・リード・説明・ボタン） -------------------- */

@@ -1,13 +1,14 @@
 // ==========================================================================
 // check-activities.mjs — 活動ページ（Discord のスレッド風）を手元で確かめる
 //
-// 確かめるのは 4 つ。
+// 確かめるのは 5 つ。
 //   1. 入力の確かめ方（worker/activities.js の parseThread / parsePost）
-//   2. 公開・見送りのときに、一覧とスレッドに何が出るか
-//   3. 書き込みの数と「最後の書き込み」の数え直し（ACTIVITY_REFRESH_SQL）
-//   4. 承認待ちを見せる相手（canSee）と、画面に出す形
+//   2. 立てた活動が、そのまま一覧とスレッドに出る（承認はしない）
+//   3. 書き足すと、件数と「最後の書き込み」が進む（ACTIVITY_BUMP_SQL）
+//   4. 取り下げ・復帰と、見られる相手（canSee）
+//   5. Markdown（画像・危ない行き先）と、画面に出す形
 //
-// 本番と同じ SQL を、本番と同じ順番で流す（立てる → 承認 → 書き足す → 承認/見送り）。
+// 本番と同じ SQL を、本番と同じ順番で流す（立てる → 書き足す → 取り下げ → 戻す）。
 //
 // 使い方: npm run check:activities
 // ==========================================================================
@@ -16,25 +17,21 @@ import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 
 import {
+    ACTIVITY_BUMP_SQL,
+    ACTIVITY_HIDE_SQL,
     ACTIVITY_INSERT_SQL,
     ACTIVITY_LIMITS,
     ACTIVITY_LIST_SQL,
     ACTIVITY_ONE_SQL,
-    ACTIVITY_PENDING_POSTS_SQL,
+    ACTIVITY_POSTS_MAX,
+    ACTIVITY_POSTS_SQL,
     ACTIVITY_POST_COUNT_SQL,
     ACTIVITY_POST_INSERT_SQL,
-    ACTIVITY_POST_ONE_SQL,
-    ACTIVITY_POST_PUBLISH_SQL,
-    ACTIVITY_POST_REJECT_SQL,
-    ACTIVITY_POSTS_SQL,
-    ACTIVITY_PUBLISH_SQL,
     ACTIVITY_RECENT_POSTS_SQL,
     ACTIVITY_RECENT_THREADS_SQL,
-    ACTIVITY_REFRESH_SQL,
-    ACTIVITY_REJECT_SQL,
-    ADMIN_PENDING_POSTS_SQL,
-    ADMIN_PENDING_THREADS_SQL,
-    ADMIN_RECENT_THREADS_SQL,
+    ACTIVITY_RESTORE_SQL,
+    ADMIN_HIDDEN_THREADS_SQL,
+    ADMIN_PUBLISHED_THREADS_SQL,
     canSee,
     parsePost,
     parseThread,
@@ -42,6 +39,8 @@ import {
     toThread,
     toThreadCard,
 } from "../worker/activities.js";
+import { renderActivity, renderActivityForm } from "../worker/activity.js";
+import { renderMarkdown } from "../worker/markdown.js";
 
 const NOW = Date.parse("2026-10-20T12:00:00Z");
 const AT = new Date(NOW).toISOString();
@@ -65,14 +64,13 @@ const check = (title, ok, detail = "") => {
     }
 };
 
-/** 活動を 1 本立てる（本番と同じ手順）。公開まで済ませることもできる */
+/** 活動を 1 本立てる（本番と同じ手順。そのまま公開される） */
 const addThread = ({
     id,
     title = "はじめての活動",
     body = "本文です。",
     at = AT,
     author = AUTHOR,
-    published = false,
 }) => {
     db.prepare(ACTIVITY_INSERT_SQL).run(
         id,
@@ -86,37 +84,26 @@ const addThread = ({
         "ip-hash",
     );
 
-    if (published) {
-        db.prepare(ACTIVITY_PUBLISH_SQL).run(id, at);
-        db.prepare(ACTIVITY_REFRESH_SQL).run(id);
-    }
-
     return id;
 };
 
-/** 書き込みを 1 件足す（承認待ちで入る） */
-const addPost = ({ activityId, at = AT, author = AUTHOR, body = "追記です。" }) =>
-    Number(
+/** 書き込みを 1 件足す（本番と同じく、活動側の件数も同じ回に進める） */
+const addPost = ({ activityId, at = AT, author = AUTHOR, body = "追記です。" }) => {
+    const id = Number(
         db
             .prepare(ACTIVITY_POST_INSERT_SQL)
             .run(activityId, body, `<p>${body}</p>`, author.id, author.name, author.avatar, at)
             .lastInsertRowid,
     );
 
-const publishPost = (postId, activityId, at = AT) => {
-    db.prepare(ACTIVITY_POST_PUBLISH_SQL).run(postId, at);
-    db.prepare(ACTIVITY_REFRESH_SQL).run(activityId);
-};
+    db.prepare(ACTIVITY_BUMP_SQL).run(activityId, at);
 
-const rejectPost = (postId, activityId) => {
-    db.prepare(ACTIVITY_POST_REJECT_SQL).run(postId);
-    db.prepare(ACTIVITY_REFRESH_SQL).run(activityId);
+    return id;
 };
 
 const threadOf = (id) => toThread(db.prepare(ACTIVITY_ONE_SQL).get(id));
 const cards = (limit = 50) => db.prepare(ACTIVITY_LIST_SQL).all(limit).map(toThreadCard);
 const postsOf = (id) => db.prepare(ACTIVITY_POSTS_SQL).all(id).map(toPost);
-const pendingPostsOf = (id) => db.prepare(ACTIVITY_PENDING_POSTS_SQL).all(id).map(toPost);
 
 // --- 1. 入力の確かめ方 -----------------------------------------------------
 
@@ -142,101 +129,56 @@ check(
 check("書き足すときも、空なら断る", Boolean(parsePost({ body: "  " }).error));
 check("書き足す本文は、そのまま使える", parsePost({ body: " 追記 " }).data?.body === "追記");
 
-// --- 2. 立てただけでは、一覧に出ない ---------------------------------------
+// --- 2. 立てた活動は、そのまま公開される -----------------------------------
 
-addThread({ id: "thread0001", published: false });
+addThread({ id: "thread0001" });
 
-check("承認待ちの活動は、一覧に出ない", cards().length === 0, `件数: ${cards().length}`);
-check("承認待ちの活動は、書いた本人には見える", canSee(threadOf("thread0001"), AUTHOR));
-check("承認待ちの活動は、ほかの人には見えない", !canSee(threadOf("thread0001"), OTHER));
-check("ログインしていない人にも見えない", !canSee(threadOf("thread0001"), null));
-check(
-    "承認待ちの活動は、承認ページに古い順で出る",
-    db.prepare(ADMIN_PENDING_THREADS_SQL).all(10).length === 1,
-);
-
-// --- 3. 承認すると、一覧に出る ---------------------------------------------
-
-db.prepare(ACTIVITY_PUBLISH_SQL).run("thread0001", AT);
-db.prepare(ACTIVITY_REFRESH_SQL).run("thread0001");
-
-const published = cards();
-check("承認すると、一覧に出る", published.length === 1);
+const created = cards();
+check("立てた活動が、すぐ一覧に出る", created.length === 1, `件数: ${created.length}`);
 check(
     "最初の書き込みを 1 件として数える",
-    published[0].postCount === 1,
-    `件数: ${published[0].postCount}`,
+    created[0].postCount === 1,
+    `件数: ${created[0].postCount}`,
 );
 check(
     "書いた人の名前とアイコンが付く",
-    published[0].authorName === "たろう" && published[0].authorIcon !== "",
+    created[0].authorName === "たろう" && created[0].authorIcon !== "",
 );
 check(
     "本文の抜粋が付く",
-    published[0].excerpt === "本文です。",
-    `抜粋: ${JSON.stringify(published[0].excerpt)}`,
+    created[0].excerpt === "本文です。",
+    `抜粋: ${JSON.stringify(created[0].excerpt)}`,
 );
-check("承認したら、ほかの人にも見える", canSee(threadOf("thread0001"), OTHER));
-check("承認待ちの一覧からは消える", db.prepare(ADMIN_PENDING_THREADS_SQL).all(10).length === 0);
-
-// --- 4. 書き足す（承認待ちのうちは出ない） ---------------------------------
-
-const post1 = addPost({ activityId: "thread0001", at: LATER });
-
-check("書き足しただけでは、スレッドに出ない", postsOf("thread0001").length === 0);
-check("書いた本人には、承認待ちとして見える", pendingPostsOf("thread0001").length === 1);
+check("公開した日時が入る", threadOf("thread0001").publishedAt === AT);
+check("ほかの人にも見える", canSee(threadOf("thread0001"), OTHER));
+check("ログインしていない人にも見える", canSee(threadOf("thread0001"), null));
 check(
-    "承認待ちのあいだは、書き込みの数が増えない",
-    threadOf("thread0001").postCount === 1,
-    `件数: ${threadOf("thread0001").postCount}`,
+    "書き込みが無くても、スレッドには最初の書き込みが出る",
+    postsOf("thread0001").length === 0 && threadOf("thread0001").postCount === 1,
 );
+
+// --- 3. 書き足すと、すぐ出る -----------------------------------------------
+
+addPost({ activityId: "thread0001", at: LATER });
+
+check("書き足すと、スレッドに出る", postsOf("thread0001").length === 1);
+check("書き足すと、件数が増える", threadOf("thread0001").postCount === 2);
+check("最後の書き込みの時刻が、一覧の並びに使われる", cards()[0].updatedAt === LATER);
+check("一覧にも、書き込みの数が出る", cards()[0].postCount === 2, `件数: ${cards()[0].postCount}`);
 check(
-    "承認待ちの書き込みも、数えるときは数に入る",
+    "書き込みの数を数えられる",
     db.prepare(ACTIVITY_POST_COUNT_SQL).get("thread0001").count === 1,
 );
 check(
-    "どの活動の書き込みか、引ける（承認したあとの数え直しに使う）",
-    db.prepare(ACTIVITY_POST_ONE_SQL).get(post1).activity_id === "thread0001",
+    "1 本に置ける書き込みの上限がある",
+    ACTIVITY_POSTS_MAX >= 1 && Number.isInteger(ACTIVITY_POSTS_MAX),
+    `上限: ${ACTIVITY_POSTS_MAX}`,
 );
 
-// --- 5. 書き込みを承認する -------------------------------------------------
-
-publishPost(post1, "thread0001", LATER);
-
-check("承認すると、スレッドに出る", postsOf("thread0001").length === 1);
-check("承認すると、承認待ちから消える", pendingPostsOf("thread0001").length === 0);
-check(
-    "書き込みの数が増える",
-    threadOf("thread0001").postCount === 2,
-    `件数: ${threadOf("thread0001").postCount}`,
-);
-check("最後の書き込みの時刻が、一覧の並びに使われる", cards()[0].updatedAt === LATER);
-check("一覧にも、書き込みの数が出る", cards()[0].postCount === 2, `件数: ${cards()[0].postCount}`);
-check("承認ページの「公開中」に出る", db.prepare(ADMIN_RECENT_THREADS_SQL).all(10).length === 1);
-
-// --- 6. 書き込みを見送ると、数え直される -----------------------------------
-
-const post2 = addPost({ activityId: "thread0001", at: LATER, body: "見送られる追記" });
-rejectPost(post2, "thread0001");
-
-check("見送った書き込みは、スレッドに出ない", postsOf("thread0001").length === 1);
-check("見送った書き込みは、承認待ちにも残らない", pendingPostsOf("thread0001").length === 0);
-check(
-    "見送っても、数え直せば元の数に戻る",
-    threadOf("thread0001").postCount === 2,
-    `件数: ${threadOf("thread0001").postCount}`,
-);
-check(
-    "見送ったあとの「最後の書き込み」は、残っている書き込みの時刻",
-    cards().find((card) => card.id === "thread0001").updatedAt === LATER,
-    `時刻: ${cards().find((card) => card.id === "thread0001").updatedAt}`,
-);
-
-// --- 7. 並び順 -------------------------------------------------------------
+// --- 4. 並び順 -------------------------------------------------------------
 
 const YESTERDAY = new Date(NOW - 24 * 60 * 60 * 1000).toISOString();
-const TWO_DAYS_AGO = new Date(NOW - 2 * 24 * 60 * 60 * 1000).toISOString();
-addThread({ id: "thread0002", title: "古い活動", at: YESTERDAY, published: true });
+addThread({ id: "thread0002", title: "古い活動", at: YESTERDAY });
 
 const ordered = cards();
 check(
@@ -244,33 +186,109 @@ check(
     ordered[0].id === "thread0001" && ordered[1].id === "thread0002",
 );
 
-// --- 8. 取り下げると、一覧から消える ---------------------------------------
+// --- 5. 取り下げと復帰 -----------------------------------------------------
 
-db.prepare(ACTIVITY_REJECT_SQL).run("thread0001");
+db.prepare(ACTIVITY_HIDE_SQL).run("thread0001");
 
 check("取り下げると、一覧から消える", !cards().some((card) => card.id === "thread0001"));
 check("取り下げても、書いた本人には見える", canSee(threadOf("thread0001"), AUTHOR));
 check("取り下げたら、ほかの人には見えない", !canSee(threadOf("thread0001"), OTHER));
 check(
-    "取り下げた活動の書き込みは、承認待ちの一覧に出ない",
-    db.prepare(ADMIN_PENDING_POSTS_SQL).all(10).length === 0,
-    "公開中の活動の書き込みだけを出す",
+    "管理ページの「取り下げた活動」に出る",
+    db.prepare(ADMIN_HIDDEN_THREADS_SQL).all(10).length === 1,
+);
+check(
+    "管理ページの「公開中」からは消える",
+    !db
+        .prepare(ADMIN_PUBLISHED_THREADS_SQL)
+        .all(10)
+        .some((row) => row.id === "thread0001"),
 );
 
-// --- 9. 同じ人からの本数を数える（いたずら対策） ---------------------------
+db.prepare(ACTIVITY_RESTORE_SQL).run("thread0001");
 
-const recentThreads = db.prepare(ACTIVITY_RECENT_THREADS_SQL).get(AUTHOR.id, TWO_DAYS_AGO).count;
-const recentPosts = db.prepare(ACTIVITY_RECENT_POSTS_SQL).get(AUTHOR.id, TWO_DAYS_AGO).count;
+check(
+    "戻すと、また一覧に出る",
+    cards().some((card) => card.id === "thread0001"),
+);
+check(
+    "戻すと、「取り下げた活動」から消える",
+    db.prepare(ADMIN_HIDDEN_THREADS_SQL).all(10).length === 0,
+);
+check("戻すと、「公開中」に並ぶ", db.prepare(ADMIN_PUBLISHED_THREADS_SQL).all(10).length === 2);
+
+// --- 6. 同じ人からの本数を数える（いたずら対策） ---------------------------
+
+const recentThreads = db
+    .prepare(ACTIVITY_RECENT_THREADS_SQL)
+    .get(AUTHOR.id, new Date(NOW - 2 * 24 * 60 * 60 * 1000).toISOString()).count;
+const recentPosts = db
+    .prepare(ACTIVITY_RECENT_POSTS_SQL)
+    .get(AUTHOR.id, new Date(NOW - 2 * 24 * 60 * 60 * 1000).toISOString()).count;
 
 check("同じ人が立てた本数を数えられる", recentThreads === 2, `本数: ${recentThreads}`);
-check("同じ人が書き込んだ数を数えられる", recentPosts === 2, `件数: ${recentPosts}`);
+check("同じ人が書き込んだ数を数えられる", recentPosts === 1, `件数: ${recentPosts}`);
 check(
     "その人以外は数に入らない",
-    db.prepare(ACTIVITY_RECENT_THREADS_SQL).get(OTHER.id, TWO_DAYS_AGO).count === 0,
+    db
+        .prepare(ACTIVITY_RECENT_THREADS_SQL)
+        .get(OTHER.id, new Date(NOW - 2 * 24 * 60 * 60 * 1000).toISOString()).count === 0,
 );
 
+// --- 7. Markdown（画像・危ない行き先） -------------------------------------
+
+const withImage = renderMarkdown("![スクリーンショット](/img/abc123)");
+check(
+    "画像を Markdown で置ける",
+    withImage.includes('<img src="/img/abc123"') && withImage.includes('alt="スクリーンショット"'),
+    withImage,
+);
+check(
+    "見出し・太字・箇条書きが使える",
+    renderMarkdown("## 見出し\n\n**太字**\n\n- 箇条書き").includes("<h2>見出し</h2>"),
+);
+
+const unsafeLink = renderMarkdown("[押す](javascript:alert(1))");
+check(
+    "javascript: のリンクは、そのまま通さない",
+    !unsafeLink.includes("javascript:") && unsafeLink.includes('href="#"'),
+    unsafeLink,
+);
+
+const unsafeImage = renderMarkdown("![a](javascript:alert(1))");
+check("javascript: の画像も、そのまま通さない", !unsafeImage.includes("javascript:"), unsafeImage);
+check(
+    "生の HTML は、文字として出る",
+    renderMarkdown("<script>alert(1)</script>").includes("&lt;script&gt;"),
+);
+
+// --- 8. 画面に出す形 -------------------------------------------------------
+
+const form = renderActivityForm({ user: AUTHOR });
+check("書くページに、下見の置き場がある", form.includes("data-activity-preview"));
+check("書くページに、画像を上げる入口がある", form.includes("data-activity-image"));
+check("書くページに、動きの読み込みがある", form.includes("/assets/js/pages/activity.js"));
+check("書くページは「すぐ公開」と伝える", form.includes("すぐに公開されます"));
+check("書くページに「承認」の文字は無い", !form.includes("承認"));
+
+const thread = threadOf("thread0001");
+const page = renderActivity({ thread, posts: postsOf("thread0001"), viewer: AUTHOR });
+check("本人には、書き足すフォームが出る", page.includes("data-activity-form"));
+check("書き足すフォームにも、下見がある", page.includes("data-activity-preview"));
+check("書き足すと「すぐ出る」と伝える", page.includes("書き込むと、すぐにこのページに出ます"));
+
+db.prepare(ACTIVITY_HIDE_SQL).run("thread0001");
+const hiddenPage = renderActivity({
+    thread: threadOf("thread0001"),
+    posts: postsOf("thread0001"),
+    viewer: AUTHOR,
+});
+check("取り下げた活動は、本人に理由を出す", hiddenPage.includes("運営が取り下げています"));
+check("取り下げられている間は、書き足せない", !hiddenPage.includes("data-activity-form"));
+check("取り下げた活動は、検索から入れない", hiddenPage.includes('name="robots" content="noindex"'));
+
 if (failed === 0) {
-    console.log("活動の受け取りと、承認と、書き足しは、期待どおりです。");
+    console.log("活動の受け取り・公開・書き足し・取り下げは、期待どおりです。");
 } else {
     console.log(`${failed} 件が期待と違います。`);
     process.exitCode = 1;

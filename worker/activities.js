@@ -6,7 +6,8 @@
 //   あとから書き足せる …… activity_posts（本人だけ）
 //
 // 書けるのは Discord でログインした人だけ。誰が書いたかが分かるので、荒らされた
-// ときの手当てが早い。公開は運営が承認したものだけ（コラムと同じ）。
+// ときの手当てが早い。書いたものはそのまま公開し、問題があったときだけ運営が
+// 取り下げる（承認はしない）。
 //
 // 画面の組み立ては activity.js、保存の SQL と入力の検証はここに置く。
 // ==========================================================================
@@ -66,8 +67,8 @@ export const parsePost = (input) => {
 /**
  * その活動を、この人が見てよいか。
  *
- * 公開されたものは誰でも見られる。承認待ちのものは、書いた本人だけが
- * 見られる（投稿した直後に「出たかどうか」を確かめられるように）。
+ * 公開されたものは誰でも見られる。取り下げられたものは、書いた本人だけが
+ * 見られる（運営が見られるかどうかは、呼ぶ側で別に判定する）。
  */
 export const canSee = (thread, viewer) =>
     thread.status === "published" || Boolean(viewer && viewer.id === thread.authorId);
@@ -118,7 +119,7 @@ export const ACTIVITY_LIST_SQL = `
      LIMIT ?1
 `;
 
-/** 活動 1 本（承認待ちでも引く。見せるかどうかは canSee で決める） */
+/** 活動 1 本（取り下げられていても引く。見せるかどうかは canSee で決める） */
 export const ACTIVITY_ONE_SQL = `
     SELECT id, title, body_html, author_id, author_name, author_icon, status,
            created_at, published_at, updated_at, post_count
@@ -126,30 +127,17 @@ export const ACTIVITY_ONE_SQL = `
      WHERE id = ?1
 `;
 
-/** その活動の、公開された書き込み（古い順） */
+/** その活動の書き込み（古い順。書き込みはすべて、書いた時点で公開） */
 export const ACTIVITY_POSTS_SQL = `
     SELECT id, body_html, author_name, author_icon, created_at
       FROM activity_posts
-     WHERE activity_id = ?1 AND status = 'published'
+     WHERE activity_id = ?1
      ORDER BY id
 `;
 
-/** その活動の、承認待ちの書き込み（本人にだけ見せる） */
-export const ACTIVITY_PENDING_POSTS_SQL = `
-    SELECT id, body_html, author_name, author_icon, created_at
-      FROM activity_posts
-     WHERE activity_id = ?1 AND status = 'pending'
-     ORDER BY id
-`;
-
-/** 書き込みの数（承認待ちもふくむ。これ以上は足せない、の判定に使う） */
+/** 書き込みの数（1 本に置ける数の上限を判定する） */
 export const ACTIVITY_POST_COUNT_SQL = `
     SELECT COUNT(*) AS count FROM activity_posts WHERE activity_id = ?1
-`;
-
-/** 書き込み 1 件が、どの活動のものか（承認したあとに数え直すため） */
-export const ACTIVITY_POST_ONE_SQL = `
-    SELECT activity_id FROM activity_posts WHERE id = ?1
 `;
 
 /** 同じ人が 1 時間に立てた活動の数 */
@@ -166,89 +154,59 @@ export const ACTIVITY_RECENT_POSTS_SQL = `
      WHERE author_id = ?1 AND created_at > ?2
 `;
 
-/** 新しい活動を 1 本置く（最初の書き込みも同じ行に入れる） */
+/** 新しい活動を 1 本置く（最初の書き込みも同じ行に入れる。そのまま公開） */
 export const ACTIVITY_INSERT_SQL = `
     INSERT INTO activities
          (id, title, body_md, body_html, author_id, author_name, author_icon,
           status, created_at, published_at, updated_at, post_count, ip_hash)
-    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'pending', ?8, NULL, ?8, 1, ?9)
+    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'published', ?8, ?8, ?8, 1, ?9)
 `;
 
-/** 書き込みを 1 件足す（承認待ちで入れる） */
+/** 書き込みを 1 件足す（そのまま公開） */
 export const ACTIVITY_POST_INSERT_SQL = `
     INSERT INTO activity_posts
          (activity_id, body_md, body_html, author_id, author_name, author_icon,
-          status, created_at)
-    VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'pending', ?7)
+          status, created_at, published_at)
+    VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'published', ?7, ?7)
 `;
 
-/** 承認待ちの活動（古い順。先に来たものから片付ける） */
-export const ADMIN_PENDING_THREADS_SQL = `
-    SELECT id, title, body_md, author_name, created_at
-      FROM activities
-     WHERE status = 'pending'
-     ORDER BY created_at, id
-     LIMIT ?1
+/**
+ * 書き込みが増えたことを、活動の側に写す。
+ *
+ * 一覧の並びと「何件の書き込み」は activities の列を見ているので、
+ * 書き込みを足したら同じ回にここも進める（数え直さなくてよい）。
+ */
+export const ACTIVITY_BUMP_SQL = `
+    UPDATE activities
+       SET post_count = post_count + 1,
+           updated_at = ?2
+     WHERE id = ?1
 `;
 
-/** 承認待ちの書き込み（公開されている活動のものだけ） */
-export const ADMIN_PENDING_POSTS_SQL = `
-    SELECT p.id, p.activity_id, p.body_md, p.author_name, p.created_at, a.title
-      FROM activity_posts p
-      JOIN activities a ON a.id = p.activity_id
-     WHERE p.status = 'pending' AND a.status = 'published'
-     ORDER BY p.id
-     LIMIT ?1
-`;
-
-/** 公開中の活動（最後の書き込みが新しい順。取り下げるのに使う） */
-export const ADMIN_RECENT_THREADS_SQL = `
-    SELECT id, title, author_name, post_count, updated_at
+/** 公開中の活動（運営が取り下げるのに使う。最後の書き込みが新しい順） */
+export const ADMIN_PUBLISHED_THREADS_SQL = `
+    SELECT id, title, body_md, author_name, post_count, updated_at
       FROM activities
      WHERE status = 'published'
      ORDER BY updated_at DESC, id DESC
      LIMIT ?1
 `;
 
-/** 活動を公開する（公開した日時は、最初の 1 回だけ入れる） */
-export const ACTIVITY_PUBLISH_SQL = `
-    UPDATE activities
-       SET status = 'published', published_at = COALESCE(published_at, ?2)
-     WHERE id = ?1
+/** 取り下げられた活動（運営が戻すのに使う。新しい順） */
+export const ADMIN_HIDDEN_THREADS_SQL = `
+    SELECT id, title, body_md, author_name, post_count, updated_at
+      FROM activities
+     WHERE status = 'hidden'
+     ORDER BY updated_at DESC, id DESC
+     LIMIT ?1
 `;
 
-/** 活動を見送る（取り下げるときも同じ） */
-export const ACTIVITY_REJECT_SQL = `
-    UPDATE activities SET status = 'rejected' WHERE id = ?1
+/** 活動を取り下げる（一覧から下げる。本人には見えたまま） */
+export const ACTIVITY_HIDE_SQL = `
+    UPDATE activities SET status = 'hidden' WHERE id = ?1
 `;
 
-/** 書き込みを公開する */
-export const ACTIVITY_POST_PUBLISH_SQL = `
-    UPDATE activity_posts SET status = 'published', published_at = ?2 WHERE id = ?1
-`;
-
-/** 書き込みを見送る（取り下げるときも同じ） */
-export const ACTIVITY_POST_REJECT_SQL = `
-    UPDATE activity_posts SET status = 'rejected' WHERE id = ?1
-`;
-
-/**
- * 書き込みの数と「最後の書き込み」を、いまの状態から数え直す。
- *
- * 承認・見送りのたびに 1 回だけ走らせる。数え直す形にしておくと、
- * 見送りが続いても数がずれない。
- */
-export const ACTIVITY_REFRESH_SQL = `
-    UPDATE activities
-       SET post_count = 1 + (
-               SELECT COUNT(*) FROM activity_posts
-                WHERE activity_id = ?1 AND status = 'published'
-           ),
-           updated_at = COALESCE(
-               (SELECT MAX(published_at) FROM activity_posts
-                 WHERE activity_id = ?1 AND status = 'published'),
-               published_at,
-               created_at
-           )
-     WHERE id = ?1
+/** 取り下げを戻す（また一覧に並ぶ） */
+export const ACTIVITY_RESTORE_SQL = `
+    UPDATE activities SET status = 'published' WHERE id = ?1
 `;

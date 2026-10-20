@@ -23,12 +23,12 @@
 //   GET  /mypage /mypage.html   マイページ（Discord でログインした人だけ）
 //   POST /mypage/title          称号の着脱の依頼を置く（反映するのは bot）
 //   GET  /activities            活動の一覧（Discord のチャンネル風）
-//   POST /activities            活動を立てる（Discord でログインした人だけ・承認待ち）
+//   POST /activities            活動を立てる（Discord でログインした人だけ・すぐ公開）
 //   GET  /activities/<id>       活動 1 本（Discord のスレッド風）
-//   POST /activities/<id>/posts 活動に書き足す（立てた本人だけ・承認待ち）
+//   POST /activities/<id>/posts 活動に書き足す（立てた本人だけ・すぐ公開）
 //   GET  /activities/new        活動を書くページ
-//   GET  /admin/activities      活動の承認（合言葉で入った人だけ）
-//   POST /admin/activities      公開・見送り・取り下げ
+//   GET  /admin/activities      活動の管理（合言葉で入った人だけ）
+//   POST /admin/activities      取り下げ・戻す
 //   GET  /admin/achievements    実績の付与・剥奪（合言葉で入った人だけ）
 //   POST /admin/achievements    付与・剥奪の依頼を置く（反映するのは bot）
 //   GET  /auth/discord          Discord の認証画面へ送る
@@ -67,29 +67,24 @@ import {
 import { renderAdminAchievements } from "./admin-achievements.js";
 import { renderAdminActivities } from "./admin-activities.js";
 import {
+    ACTIVITY_BUMP_SQL,
+    ACTIVITY_HIDE_SQL,
     ACTIVITY_INSERT_SQL,
     ACTIVITY_LIST_MAX,
     ACTIVITY_LIST_SQL,
     ACTIVITY_ONE_SQL,
-    ACTIVITY_PENDING_POSTS_SQL,
     ACTIVITY_POSTS_MAX,
     ACTIVITY_POSTS_PER_HOUR,
     ACTIVITY_POSTS_SQL,
     ACTIVITY_POST_COUNT_SQL,
     ACTIVITY_POST_INSERT_SQL,
-    ACTIVITY_POST_ONE_SQL,
-    ACTIVITY_POST_PUBLISH_SQL,
-    ACTIVITY_POST_REJECT_SQL,
-    ACTIVITY_PUBLISH_SQL,
     ACTIVITY_RECENT_POSTS_SQL,
     ACTIVITY_RECENT_THREADS_SQL,
-    ACTIVITY_REFRESH_SQL,
-    ACTIVITY_REJECT_SQL,
+    ACTIVITY_RESTORE_SQL,
     ACTIVITY_THREADS_PER_HOUR,
     ADMIN_ACTIVITY_LIST_MAX,
-    ADMIN_PENDING_POSTS_SQL,
-    ADMIN_PENDING_THREADS_SQL,
-    ADMIN_RECENT_THREADS_SQL,
+    ADMIN_HIDDEN_THREADS_SQL,
+    ADMIN_PUBLISHED_THREADS_SQL,
     canSee,
     parsePost,
     parseThread,
@@ -1085,8 +1080,8 @@ const newActivityId = () => crypto.randomUUID().replaceAll("-", "").slice(0, 10)
 /**
  * 活動 1 本のページを組み立てる。
  *
- * 見せてよくないとき（無い・承認待ちで本人でも運営でもない）は null を返す。
- * 承認待ちの活動と書き込みは、立てた本人と運営にだけ見せる（承認する前に読めるように）。
+ * 見せてよくないとき（無い・取り下げられていて本人でも運営でもない）は null を返す。
+ * 取り下げられた活動は、書いた本人と運営にだけ見せる（理由を伝えられるように）。
  */
 const buildActivityPage = async (request, env, id, { error = "" } = {}) => {
     const row = await env.DB.prepare(ACTIVITY_ONE_SQL).bind(id).first();
@@ -1096,22 +1091,13 @@ const buildActivityPage = async (request, env, id, { error = "" } = {}) => {
     const thread = toThread(row);
     if (!canSee(thread, user) && !admin) return null;
 
-    const showPending = admin || Boolean(user && user.id === thread.authorId);
-    const [posts, pending] = await Promise.all([
-        env.DB.prepare(ACTIVITY_POSTS_SQL).bind(id).all(),
-        showPending
-            ? env.DB.prepare(ACTIVITY_PENDING_POSTS_SQL).bind(id).all()
-            : Promise.resolve({ results: [] }),
-    ]);
+    const posts = await env.DB.prepare(ACTIVITY_POSTS_SQL).bind(id).all();
 
     return renderActivity({
         thread,
         posts: (posts.results ?? []).map(toPost),
-        pendingPosts: (pending.results ?? []).map(toPost),
         viewer: user,
-        isAdmin: admin,
         error,
-        now: Date.now(),
     });
 };
 
@@ -1155,8 +1141,8 @@ const handleActivityNew = async (request, env) => {
  * 活動を立てる。
  *
  * 書けるのは Discord でログインした人だけ（誰が書いたかが分かるようにするため）。
- * 保存は承認待ちで、運営が公開してから一覧に出る。短い間に何本も立てられないよう、
- * 同じ人から 1 時間に立てられる本数を数えている。
+ * 書いたものはそのまま公開する。短い間に何本も立てられないよう、同じ人から
+ * 1 時間に立てられる本数を数えている。
  */
 const handleActivityCreate = async (request, env) => {
     if (!isSameOrigin(request)) return forbidden();
@@ -1236,6 +1222,9 @@ const handleActivityPost = async (request, env, id) => {
         return redirectTo("/activities");
     }
 
+    // 取り下げられている間は、書き足せない（画面にもフォームを出していない）
+    if (thread.status !== "published") return redirectTo(`/activities/${id}`);
+
     // 画面に戻して理由を出す（書き足せないまま、黙って戻さない）
     const pageWith = async (error, status) => {
         const html = await buildActivityPage(request, env, id, { error });
@@ -1269,41 +1258,44 @@ const handleActivityPost = async (request, env, id) => {
         );
     }
 
-    await env.DB.prepare(ACTIVITY_POST_INSERT_SQL)
-        .bind(
+    const now = new Date().toISOString();
+
+    // 書き込みと、活動側の「件数・最後の書き込み」を同じ回に進める。
+    // 途中で切れても、片方だけ進んだ状態が残らない。
+    await env.DB.batch([
+        env.DB.prepare(ACTIVITY_POST_INSERT_SQL).bind(
             id,
             parsed.data.body,
             renderMarkdown(parsed.data.body),
             user.id,
             user.name,
             user.avatar,
-            new Date().toISOString(),
-        )
-        .run();
+            now,
+        ),
+        env.DB.prepare(ACTIVITY_BUMP_SQL).bind(id, now),
+    ]);
 
     return redirectTo(`/activities/${id}#posts`);
 };
 
-/** 承認ページに出す 3 つの一覧を、まとめて引く */
+/** 管理ページに出す 2 つの一覧を、まとめて引く */
 const adminActivityLists = async (env) => {
-    const [threads, posts, recent] = await Promise.all([
-        env.DB.prepare(ADMIN_PENDING_THREADS_SQL).bind(ADMIN_ACTIVITY_LIST_MAX).all(),
-        env.DB.prepare(ADMIN_PENDING_POSTS_SQL).bind(ADMIN_ACTIVITY_LIST_MAX).all(),
-        env.DB.prepare(ADMIN_RECENT_THREADS_SQL).bind(ADMIN_ACTIVITY_LIST_MAX).all(),
+    const [published, hidden] = await Promise.all([
+        env.DB.prepare(ADMIN_PUBLISHED_THREADS_SQL).bind(ADMIN_ACTIVITY_LIST_MAX).all(),
+        env.DB.prepare(ADMIN_HIDDEN_THREADS_SQL).bind(ADMIN_ACTIVITY_LIST_MAX).all(),
     ]);
 
     return {
-        threads: threads.results ?? [],
-        posts: posts.results ?? [],
-        recent: recent.results ?? [],
+        published: published.results ?? [],
+        hidden: hidden.results ?? [],
     };
 };
 
 /**
- * 活動の承認。
+ * 活動の取り下げ・復帰。
  *
- * できるのは「公開する」「見送る」「取り下げる」だけ（本文は書き換えない）。
- * 承認・見送りのあとは、その活動の書き込みの数と「最後の書き込み」を数え直す。
+ * 活動は書いた時点で公開されるので、ここでできるのは「取り下げる」「戻す」だけ
+ * （本文は書き換えない）。取り下げても、書いた本人には見えたまま。
  */
 const handleAdminActivities = async (request, env) => {
     if (!(await isAdmin(request, env))) return redirectTo("/admin/columns");
@@ -1314,14 +1306,11 @@ const handleAdminActivities = async (request, env) => {
         const form = await readForm(request);
         if (form.error) return redirectTo("/admin/activities");
 
-        const kind = String(form.data.get("kind") ?? "");
         const action = String(form.data.get("action") ?? "");
         const id = String(form.data.get("id") ?? "");
-        const validKind =
-            (kind === "thread" && /^[A-Za-z0-9-]{4,32}$/.test(id)) ||
-            (kind === "post" && /^\d+$/.test(id));
+        const validId = /^[A-Za-z0-9-]{4,32}$/.test(id);
 
-        if (!validKind || (action !== "publish" && action !== "reject")) {
+        if (!validId || (action !== "hide" && action !== "restore")) {
             return htmlResponse(
                 renderAdminActivities({
                     ...(await adminActivityLists(env)),
@@ -1331,30 +1320,11 @@ const handleAdminActivities = async (request, env) => {
             );
         }
 
-        const now = new Date().toISOString();
-        let activityId = id;
+        await env.DB.prepare(action === "hide" ? ACTIVITY_HIDE_SQL : ACTIVITY_RESTORE_SQL)
+            .bind(id)
+            .run();
 
-        if (kind === "thread") {
-            if (action === "publish") {
-                await env.DB.prepare(ACTIVITY_PUBLISH_SQL).bind(id, now).run();
-            } else {
-                await env.DB.prepare(ACTIVITY_REJECT_SQL).bind(id).run();
-            }
-        } else {
-            const post = await env.DB.prepare(ACTIVITY_POST_ONE_SQL).bind(Number(id)).first();
-            if (!post) return redirectTo("/admin/activities");
-
-            activityId = post.activity_id;
-            if (action === "publish") {
-                await env.DB.prepare(ACTIVITY_POST_PUBLISH_SQL).bind(Number(id), now).run();
-            } else {
-                await env.DB.prepare(ACTIVITY_POST_REJECT_SQL).bind(Number(id)).run();
-            }
-        }
-
-        await env.DB.prepare(ACTIVITY_REFRESH_SQL).bind(activityId).run();
-
-        return redirectTo(`/admin/activities?done=${kind}-${action}`);
+        return redirectTo(`/admin/activities?done=thread-${action}`);
     }
 
     if (request.method !== "GET") return methodNotAllowed("GET, POST");

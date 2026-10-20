@@ -204,7 +204,7 @@ ${renderRows({ userId, rows, waiting })}`
             <div class="l-container">
                 <nav class="c-admin-nav" aria-label="運営のページ">
                     <a class="c-admin-nav__link" href="/admin/columns">コラムの承認</a>
-                    <a class="c-admin-nav__link" href="/admin/activities">活動の承認</a>
+                    <a class="c-admin-nav__link" href="/admin/activities">活動の管理</a>
                     <a class="c-admin-nav__link" href="/admin/achievements" aria-current="page"
                         >実績の付与・剥奪</a
                     >

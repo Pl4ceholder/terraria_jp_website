@@ -6,7 +6,10 @@
 //   /activities/<id>  …… 1 本の活動（最初の書き込みと、書き足したもの）
 //   /activities/new   …… 新しい活動を書く（Discord でログインした人だけ）
 //
-// 見た目の部品（c-activity）は、一覧とスレッドの両方で使う。
+// 書いたものはそのまま公開する（承認はしない）。画像を上げたり、Markdown の
+// 下見を見たりする動きは assets/js/pages/activity.js が受け持つ。
+//
+// 見た目の部品（c-activity / c-editor）は、一覧とスレッドの両方で使う。
 // ==========================================================================
 
 import { ACTIVITY_LIMITS } from "./activities.js";
@@ -16,6 +19,9 @@ import { escapeHtml } from "./markdown.js";
 export const ACTIVITIES_TITLE = "活動";
 export const ACTIVITY_DESCRIPTION =
     "サーバーでの出来事や、いま進めていることを、Discord のスレッドのように書き残せます。書けるのは Discord でログインした人だけです。";
+
+/** 画面で使う動き（下見・画像）の読み込み。フォームのあるページだけに入れる */
+const ACTIVITY_SCRIPT = "/assets/js/pages/activity.js";
 
 /** アイコン。設定していない人には、名前の 1 文字目を丸に入れる */
 const renderAvatar = (icon, name) => {
@@ -79,11 +85,9 @@ ${list}
     });
 };
 
-/** スレッドの 1 件（最初の書き込み・書き足したもの・承認待ち） */
-const renderPost = (
-    { bodyHtml, authorName, authorIcon, createdAt, badge = "" },
-    now,
-) => `                    <li class="c-activity${badge === "承認待ち" ? " c-activity--pending" : ""}">
+/** スレッドの 1 件（最初の書き込み・書き足したもの） */
+const renderPost = ({ bodyHtml, authorName, authorIcon, createdAt, badge = "" }) =>
+    `                    <li class="c-activity">
 ${renderAvatar(authorIcon, authorName)}
                         <div class="c-activity__main">
                             <p class="c-activity__head">
@@ -101,50 +105,65 @@ ${bodyHtml}
                         </div>
                     </li>`;
 
+/** 画像を上げるボタンと、その説明 */
+const renderImageTools = (inputId) => `                        <div class="c-editor__toolbar">
+                            <input
+                                class="u-visually-hidden"
+                                id="${inputId}"
+                                type="file"
+                                accept="image/png,image/jpeg,image/gif,image/webp"
+                                data-activity-image
+                            />
+                            <label class="c-button c-button--small c-button--ghost" for="${inputId}">
+                                画像を追加
+                            </label>
+                            <span class="c-editor__hint">
+                                本文にカーソルを置いてから選ぶと、その場所に入ります。貼り付け（Ctrl+V）やドラッグ＆ドロップでも追加できます。
+                            </span>
+                        </div>`;
+
+/** 本文の下見。書いたとおりに公開される見た目を出す */
+const renderPreview = () => `                    <div class="c-editor__preview">
+                        <p class="c-editor__preview-title">下見（公開される見た目と同じです）</p>
+                        <div class="c-prose" data-activity-preview></div>
+                    </div>`;
+
+/** 画像の上げ具合や、入力の間違いを知らせる場所 */
+const renderEditorMessage = () =>
+    `                    <p class="c-editor__message" role="status" data-activity-message hidden></p>`;
+
 /** 活動 1 本のページ */
-export const renderActivity = ({
-    thread,
-    posts = [],
-    pendingPosts = [],
-    viewer = null,
-    isAdmin = false,
-    error = "",
-    now = Date.now(),
-}) => {
+export const renderActivity = ({ thread, posts = [], viewer = null, error = "" }) => {
     const isAuthor = Boolean(viewer && viewer.id === thread.authorId);
-    // 承認待ちの書き込みは、書いた本人と運営にだけ見せる
-    const showPending = isAuthor || isAdmin;
-    const waiting = showPending && thread.status === "pending";
+    const hidden = thread.status !== "published";
+    const canPost = isAuthor && !hidden;
 
     const messages = [
-        renderPost(
-            {
-                bodyHtml: thread.bodyHtml,
-                authorName: thread.authorName,
-                authorIcon: thread.authorIcon,
-                createdAt: thread.createdAt,
-                badge: "開始",
-            },
-            now,
-        ),
-        ...posts.map((post) => renderPost(post, now)),
-        ...(showPending
-            ? pendingPosts.map((post) => renderPost({ ...post, badge: "承認待ち" }, now))
-            : []),
+        renderPost({
+            bodyHtml: thread.bodyHtml,
+            authorName: thread.authorName,
+            authorIcon: thread.authorIcon,
+            createdAt: thread.createdAt,
+            badge: "開始",
+        }),
+        ...posts.map((post) => renderPost(post)),
     ].join("\n");
 
-    const notice = waiting
+    const notice = hidden
         ? `                <p class="p-activity__notice">
-                    ${
-                        isAdmin
-                            ? "この活動は、まだ承認待ちです。運営として見ています（公開・見送りは /admin/activities から）。"
-                            : "この活動は、まだ承認待ちです。運営が公開すると、みんなに見えるようになります（この画面はあなたにだけ見えています）。"
-                    }
+                    この活動は、運営が取り下げています。一覧には出ていません（この画面は、書いた本人と運営だけが見られます）。
                 </p>`
         : "";
 
-    const form = isAuthor
-        ? `                <form class="p-activity__form" method="post" action="/activities/${encodeURIComponent(thread.id)}/posts">
+    const form = !isAuthor
+        ? `                <p class="p-activity__note">
+                    書き足せるのは、この活動を立てた本人だけです。
+                </p>`
+        : !canPost
+          ? `                <p class="p-activity__note">
+                    取り下げられている間は、書き足せません。運営に相談してください。
+                </p>`
+          : `                <form class="p-activity__form" method="post" action="/activities/${encodeURIComponent(thread.id)}/posts" data-activity-form>
                     <div class="p-activity__field">
                         <label class="p-activity__label" for="activity-body">書き足す</label>
                         <textarea
@@ -153,18 +172,19 @@ export const renderActivity = ({
                             name="body"
                             rows="5"
                             maxlength="${ACTIVITY_LIMITS.body}"
-                            placeholder="その後の様子や、次にやることを書き足せます"
+                            placeholder="その後の様子や、次にやることを書き足せます。Markdown と画像が使えます。"
+                            data-activity-body
                             required
                         ></textarea>
+${renderImageTools("activity-post-image")}
                     </div>
+${renderPreview()}
+${renderEditorMessage()}
                     <p class="p-activity__actions">
                         <button class="c-button" type="submit">書き込む</button>
-                        <span class="p-activity__note">運営が承認すると出ます。</span>
+                        <span class="p-activity__note">書き込むと、すぐにこのページに出ます。</span>
                     </p>
-                </form>`
-        : `                <p class="p-activity__note">
-                    書き足せるのは、この活動を立てた本人だけです。
-                </p>`;
+                </form>`;
 
     const body = `            <header class="c-page-header">
                 <div class="l-container">
@@ -197,8 +217,8 @@ ${form}
         title: `${thread.title} | ${ACTIVITIES_TITLE} | ${SITE_NAME}`,
         description: `${thread.authorName} さんの活動（${SITE_NAME}）`,
         body,
-        // 承認待ちのものは、検索から入れない
-        noindex: thread.status !== "published",
+        noindex: hidden,
+        scripts: canPost ? [ACTIVITY_SCRIPT] : [],
     });
 };
 
@@ -211,7 +231,7 @@ export const renderActivityForm = ({ user, values = { title: "", body: "" }, err
                     </p>
                     <h1 class="c-page-header__title">活動を書く</h1>
                     <p class="c-page-header__text">
-                        ${escapeHtml(user.name)} さんとして書きます。公開は、運営が承認してからです。
+                        ${escapeHtml(user.name)} さんとして書きます。書いた内容は、すぐに公開されます。
                     </p>
                 </div>
             </header>
@@ -222,7 +242,7 @@ ${
         ? `                <p class="p-activities__error" role="alert">${escapeHtml(error)}</p>
 `
         : ""
-}                <form class="p-activities__form" method="post" action="/activities">
+}                <form class="p-activities__form" method="post" action="/activities" data-activity-form>
                     <div class="p-activities__field">
                         <label class="p-activities__label" for="activity-title">タイトル</label>
                         <input
@@ -248,16 +268,20 @@ ${
                             name="body"
                             rows="12"
                             maxlength="${ACTIVITY_LIMITS.body}"
-                            placeholder="いまの状況や、次にやることなど。Markdown が使えます（改行はそのまま出ます）。"
+                            placeholder="いまの状況や、次にやることなど。Markdown と画像が使えます（改行はそのまま出ます）。"
+                            data-activity-body
                             required
                         >${escapeHtml(values.body)}</textarea>
+${renderImageTools("activity-image")}
                         <p class="p-activities__hint">
-                            あとから、このページで書き足せます。書き足したぶんも承認してから出ます。
+                            見出しは <code>## 見出し</code>、太字は <code>**太字**</code>、箇条書きは行のはじめに
+                            <code>-</code>。画像は 1MB まで（PNG / JPEG / GIF / WebP）です。
                         </p>
                     </div>
-
+${renderPreview()}
+${renderEditorMessage()}
                     <p class="p-activities__actions">
-                        <button class="c-button" type="submit">書く（承認待ちで保存）</button>
+                        <button class="c-button" type="submit">書く</button>
                         <a class="c-button c-button--ghost" href="/activities">やめる</a>
                     </p>
                 </form>
@@ -268,6 +292,7 @@ ${
         description: `${SITE_NAME} に活動を書きます。`,
         body,
         noindex: true,
+        scripts: [ACTIVITY_SCRIPT],
     });
 };
 
@@ -302,7 +327,7 @@ export const renderActivityLogin = () => {
     });
 };
 
-/** 活動が見つからないとき（消えた・見送りになった・URL 違い） */
+/** 活動が見つからないとき（消えた・取り下げになった・URL 違い） */
 export const renderActivityMissing = () => {
     const body = `            <header class="c-page-header">
                 <div class="l-container">

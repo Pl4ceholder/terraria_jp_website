@@ -223,7 +223,8 @@ CREATE INDEX IF NOT EXISTS idx_achievement_requests_user
 -- 活動（Discord のスレッド風のページ）1 本。
 --
 -- 最初の書き込みは、この行に持つ。あとから書き足したものは activity_posts に入れる。
--- 書けるのは Discord でログインした人だけ。公開は運営が承認したものだけ。
+-- 書けるのは Discord でログインした人だけ。書いた時点で公開し、問題があるときだけ
+-- 運営が取り下げる（承認はしない）。
 CREATE TABLE IF NOT EXISTS activities (
     -- URL に使う短い ID（/activities/<id>）
     id TEXT PRIMARY KEY,
@@ -235,14 +236,14 @@ CREATE TABLE IF NOT EXISTS activities (
     author_id TEXT NOT NULL,
     author_name TEXT NOT NULL DEFAULT '',
     author_icon TEXT NOT NULL DEFAULT '',
-    -- pending（承認待ち） / published（公開） / rejected（見送り）
-    status TEXT NOT NULL DEFAULT 'pending',
+    -- published（公開） / hidden（運営が取り下げた）
+    status TEXT NOT NULL DEFAULT 'published',
     created_at TEXT NOT NULL,
-    -- 公開した日時。承認までは NULL。
+    -- 公開した日時（書いた時点で入る）。
     published_at TEXT,
     -- 最後に書き込みがあった時刻。一覧はこれの新しい順に並べる
     updated_at TEXT NOT NULL,
-    -- 公開された書き込みの数（最初の書き込みを含む）
+    -- 書き込みの数（最初の書き込みを含む）
     post_count INTEGER NOT NULL DEFAULT 0,
     -- 投稿者の IP を、サイトごとの鍵で変換したもの（そのままは保存しない）
     ip_hash TEXT NOT NULL DEFAULT ''
@@ -265,8 +266,8 @@ CREATE TABLE IF NOT EXISTS activity_posts (
     author_id TEXT NOT NULL,
     author_name TEXT NOT NULL DEFAULT '',
     author_icon TEXT NOT NULL DEFAULT '',
-    -- pending（承認待ち） / published（公開） / rejected（見送り）
-    status TEXT NOT NULL DEFAULT 'pending',
+    -- published（公開） / hidden（運営が取り下げた）
+    status TEXT NOT NULL DEFAULT 'published',
     created_at TEXT NOT NULL,
     published_at TEXT
 );

@@ -12,7 +12,7 @@ Terraria の日本コミュニティ向けの公式サイトです。
 - Discord のイベント（これからの予定）が、お知らせページに自動で出る
 - Discord の実績（誰が何を解放したか）も bot から受け取って保存している
 - マイページ（Discord でログイン）で、自分の実績を見て、称号を着け外しできる
-- 活動ページ（`/activities`）は Discord のスレッド風。Discord でログインした人が活動を立て、あとから本人が書き足せる（書き足したぶんも承認制）
+- 活動ページ（`/activities`）は Discord のスレッド風。Discord でログインした人が活動を立て、あとから本人が書き足せる（書いた時点で公開。画像と Markdown が使える）
 - 実績の付与・剥奪は管理画面（`/admin/achievements`）から行える。サイトは「お願い」を置くだけで、Discord への反映は bot が 30 秒ごとに拾って行う（サイトは Discord を叩かない）
 - 整形・検査はエディタの保存時に自動で走る（コミット前のチェックは無し）
 - Node.js（20.19.0 以上）は Stylelint と Wrangler に使う
@@ -102,7 +102,7 @@ worker/                    動くページと API（Cloudflare Workers）
 ├─ recruit.js              マルチ募集の HTML
 ├─ activities.js           活動の決まりごと（入力の確かめ方・保存の SQL）
 ├─ activity.js             活動の一覧・スレッドの HTML
-├─ admin-activities.js     活動の承認の画面（運営用）
+├─ admin-activities.js     活動の取り下げの画面（運営用）
 ├─ recruitments.js         「いま立っている募集」の選び方と、流れる時刻
 ├─ events.js               「これからのイベント」を選ぶ条件
 ├─ achievements.js         実績の取り込み方と、自分の実績の引き方
@@ -121,7 +121,7 @@ scripts/                   補助のスクリプト
 ├─ check-recruit.mjs       「いま立っている募集」の選び方を確かめる
 ├─ check-achievements.mjs  実績の取り込み方と引き方を確かめる
 ├─ check-requests.mjs      Web からの依頼の受け取り方と期限を確かめる
-├─ check-activities.mjs    活動の受け取り方と、承認・書き足しの流れを確かめる
+├─ check-activities.mjs    活動の受け取り方と、公開・書き足し・取り下げを確かめる
 └─ check-mypage.mjs        マイページのログイン（証の署名・期限・合言葉）を確かめる
 dev/parts.html             共通パーツのプレビュー（開発用。公開されない）
 ```
@@ -144,7 +144,7 @@ npm run check:events        # 「これからのイベント」の選び方を�
 npm run check:recruit       # 「いま立っている募集」の選び方を確かめる
 npm run check:achievements  # 実績の取り込み方と引き方を確かめる
 npm run check:requests      # Web からの依頼の受け取り方と期限を確かめる
-npm run check:activities    # 活動の受け取り方と、承認・書き足しの流れを確かめる
+npm run check:activities    # 活動の受け取り方と、公開・書き足し・取り下げを確かめる
 npm run check:mypage        # マイページのログイン（証の署名・期限・合言葉）を確かめる
 npm run deploy              # Cloudflare Workers へ公開する
 ```
