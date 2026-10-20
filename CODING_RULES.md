@@ -87,7 +87,7 @@
 │  ├─ requests.js            実績・称号の依頼
 │  ├─ admin-achievements.js  実績の管理画面
 │  ├─ admin-activities.js    活動の管理画面
-│  ├─ admin-nav.js           管理画面の共通ナビ
+│  ├─ admin-nav.js           管理画面の共通サイドメニュー
 │  ├─ auth.js                Discord ログイン
 │  ├─ mypage.js              マイページの HTML
 │  ├─ recruit.js             マルチ募集の HTML

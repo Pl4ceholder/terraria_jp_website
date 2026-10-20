@@ -1,8 +1,11 @@
 // ==========================================================================
-// admin-nav.js — 運営ページ共通のナビ
+// admin-nav.js — 運営ページ共通のサイドメニュー
 //
 // コラムの承認・活動の管理・実績の付与は、どれも同じ入口から行き来する。
 // ページごとに書き写すとリンクがずれるので、ここ 1 か所で作る。
+//
+// 見た目は assets/css/common/components.css（c-admin-sidebar）にある。
+// 狭い画面では上に、広い画面では左に固定する（l-admin）。
 // ==========================================================================
 
 const LINKS = [
@@ -14,10 +17,16 @@ const LINKS = [
 /** いま見ているページ（current）だけ aria-current を付ける */
 export const renderAdminNav = (
     current,
-) => `                <nav class="c-admin-nav" aria-label="運営のページ">
-${LINKS.map(([href, label]) =>
-    href === current
-        ? `                    <a class="c-admin-nav__link" href="${href}" aria-current="page">${label}</a>`
-        : `                    <a class="c-admin-nav__link" href="${href}">${label}</a>`,
+) => `                <aside class="c-admin-sidebar" aria-label="運営メニュー">
+                    <p class="c-admin-sidebar__title">運営メニュー</p>
+                    <nav aria-label="運営のページ">
+                        <ul class="c-admin-sidebar__list">
+${LINKS.map(
+    ([href, label]) =>
+        `                            <li><a class="c-admin-sidebar__link" href="${href}"${
+            href === current ? ' aria-current="page"' : ""
+        }>${label}</a></li>`,
 ).join("\n")}
-                </nav>`;
+                        </ul>
+                    </nav>
+                </aside>`;

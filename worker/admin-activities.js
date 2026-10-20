@@ -117,10 +117,11 @@ export const renderAdminActivities = ({ published = [], hidden = [], done = "", 
                 </div>
             </header>
 
-            <div class="l-container">
+            <div class="l-container l-admin">
                 ${renderAdminNav("/admin/activities")}
 
-                <div class="p-admin-activities">
+                <div class="l-admin__content">
+                    <div class="p-admin-activities">
 ${notice}
 ${renderSection({
     id: "admin-activities-published",
@@ -136,6 +137,7 @@ ${renderSection({
     items: hidden.map((thread) => renderThread(thread, { action: "restore", label: "戻す" })),
     empty: "取り下げた活動はありません。",
 })}
+                    </div>
                 </div>
             </div>`;
 
