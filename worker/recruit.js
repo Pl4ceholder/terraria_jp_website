@@ -81,12 +81,6 @@ const renderItem = (recruit, now) => {
                             />`
         : "";
 
-    const connection = recruit.connection
-        ? `
-                            <dt>接続</dt>
-                            <dd class="p-recruit__connection">${escapeHtml(recruit.connection)}</dd>`
-        : "";
-
     const life = renderLife(recruit, now);
 
     return `                    <li class="p-recruit__item">
@@ -103,7 +97,7 @@ const renderItem = (recruit, now) => {
                             <dt>開始</dt>
                             <dd>
                                 <time datetime="${escapeHtml(recruit.startedAt)}">${escapeHtml(formatJst(recruit.startedAt))}</time>
-                            </dd>${connection}
+                            </dd>
                         </dl>${life}
                         <p class="p-recruit__actions">
                             <a

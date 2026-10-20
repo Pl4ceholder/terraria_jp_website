@@ -162,7 +162,6 @@ const LOGIN_WINDOW_MINUTES = 10;
 const SYNC_SECRET_HEADER = "x-sync-secret";
 const RECRUIT_SYNC_MAX_BYTES = 256 * 1024;
 const RECRUIT_MAX = 100;
-const RECRUIT_TEXT_MAX = 300;
 const RECRUIT_MESSAGE_MAX = 1000;
 
 /** Discord の bot からイベントを受け取るときの決まりごと */
@@ -605,10 +604,10 @@ const handleRecruitSync = async (request, env) => {
             env.DB.prepare(
                 `INSERT INTO recruitments
                      (id, guild_id, channel_id, message_id, mode, platform, vc,
-                      connection, message, author_id, author_name, author_icon, started_at,
+                      message, author_id, author_name, author_icon, started_at,
                       last_activity_at, message_count, archive_minutes, deadline_at, synced_at)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10,
-                         ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)`,
+                         ?11, ?12, ?13, ?14, ?15, ?16, ?17)`,
             ).bind(
                 row.id,
                 row.guildId,
@@ -617,7 +616,6 @@ const handleRecruitSync = async (request, env) => {
                 row.mode,
                 row.platform,
                 row.vc,
-                row.connection,
                 row.message,
                 row.authorId,
                 row.authorName,
@@ -671,7 +669,6 @@ const toRecruitRows = (payload, syncedAt) => {
             mode: trimTo(item?.mode, 40),
             platform: trimTo(item?.platform, 40),
             vc: trimTo(item?.vc, 100),
-            connection: trimTo(item?.connection, RECRUIT_TEXT_MAX),
             message: trimTo(item?.message, RECRUIT_MESSAGE_MAX),
             authorId: trimTo(item?.authorId, 32),
             authorName: trimTo(item?.authorName, 100),
@@ -723,7 +720,6 @@ const toRecruit = (row) => ({
     mode: row.mode ?? "",
     platform: row.platform ?? "",
     vc: row.vc ?? "",
-    connection: row.connection ?? "",
     message: row.message ?? "",
     authorName: row.author_name ?? "",
     authorIcon: row.author_icon ?? "",

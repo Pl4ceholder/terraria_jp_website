@@ -96,8 +96,6 @@ CREATE TABLE IF NOT EXISTS recruitments (
     platform TEXT NOT NULL DEFAULT '',
     -- 使う VC の名前
     vc TEXT NOT NULL DEFAULT '',
-    -- SteamID か IP:Port（未定なら「なし」）
-    connection TEXT NOT NULL DEFAULT '',
     -- ひとこと
     message TEXT NOT NULL DEFAULT '',
     author_id TEXT NOT NULL DEFAULT '',

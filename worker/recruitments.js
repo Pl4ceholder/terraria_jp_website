@@ -43,7 +43,7 @@ export const deadlineOf = (row) => {
  * 流れる時刻が分からないものは、判断できないので出す。
  */
 export const RECRUIT_LIST_SQL = `
-    SELECT id, guild_id, mode, platform, vc, connection, message,
+    SELECT id, guild_id, mode, platform, vc, message,
            author_name, author_icon, started_at, last_activity_at, message_count, deadline_at
       FROM recruitments
      WHERE deadline_at IS NULL OR deadline_at >= ?1

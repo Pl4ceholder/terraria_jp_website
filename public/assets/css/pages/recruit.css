@@ -109,11 +109,6 @@
     font-size: 0.9rem;
 }
 
-/* SteamID や IP:Port は長いので、はみ出さずに折り返す */
-.p-recruit__connection {
-    overflow-wrap: anywhere;
-}
-
 /* 書き込みの数と、Discord から流れるまでの目安 */
 .p-recruit__life {
     color: var(--color-text-muted);
