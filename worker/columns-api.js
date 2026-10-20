@@ -9,6 +9,12 @@
 // ==========================================================================
 
 import { hashIp } from "./admin-session.js";
+import {
+    buildColumnFilter,
+    collectTags,
+    normalizeColumnQuery,
+    splitTags,
+} from "./columns-search.js";
 import { htmlResponse, jsonResponse, methodNotAllowed, readJson } from "./http.js";
 import { renderArticle, renderList, renderNotFound } from "./html.js";
 import { renderMarkdown } from "./markdown.js";
@@ -36,16 +42,32 @@ const IMAGE_TOTAL_MAX_BYTES = 400 * 1024 * 1024;
 /** 同じ人から 1 時間に上がる画像の数（置き場所を荒らされないため） */
 const IMAGES_PER_HOUR = 20;
 
-/** 一覧。公開されたものだけを、新しい順に出す */
-export const handleColumnList = async (env) => {
-    const { results } = await env.DB.prepare(
+/** 一覧。公開されたものだけを、新しい順に出す。?q= と ?tag= で絞り込める */
+export const handleColumnList = async (env, url) => {
+    const query = normalizeColumnQuery(new URL(url).searchParams);
+    const { where, bindings } = buildColumnFilter(query);
+    const statement = env.DB.prepare(
         `SELECT slug, title, body_md, author, tags, published_at, created_at
            FROM columns
-          WHERE status = 'published'
+          WHERE ${where}
           ORDER BY COALESCE(published_at, created_at) DESC, title ASC`,
-    ).all();
+    );
+    const { results } = await (bindings.length > 0 ? statement.bind(...bindings) : statement).all();
 
-    return htmlResponse(renderList((results ?? []).map(toColumn)));
+    // 絞り込んでいないときは、一覧に出した行からタグを数えれば足りる。
+    // 絞り込んでいるときは、ほかのタグも選べるように全件から数える。
+    const tagRows =
+        query.q || query.tag
+            ? (await env.DB.prepare(`SELECT tags FROM columns WHERE status = 'published'`).all())
+                  .results
+            : results;
+
+    return htmlResponse(
+        renderList((results ?? []).map(toColumn), {
+            ...query,
+            tags: collectTags(tagRows ?? []),
+        }),
+    );
 };
 
 /** 記事 1 件。公開されていないものは、あったこと自体を出さない */
@@ -70,10 +92,7 @@ const toColumn = (row) => ({
     body: row.body_md ?? "",
     html: row.body_html ?? "",
     author: row.author ?? "",
-    tags: (row.tags ?? "")
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean),
+    tags: splitTags(row.tags),
     // 公開した日を記事の日付にする。公開前は投稿した日。
     date: String(row.published_at || row.created_at || "").slice(0, 10),
 });
@@ -135,7 +154,7 @@ export const handlePost = async (request, env) => {
 
     const now = new Date().toISOString();
     const html = renderMarkdown(body);
-    const tagList = splitTags(tags);
+    const tagList = splitTags(tags).slice(0, 10);
 
     // slug は URL になる。重なったら作り直す。
     for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -190,14 +209,6 @@ const validatePost = ({ title, body, author, tags, slugHint }) => {
     }
     return "";
 };
-
-/** 「a, b、c」のような入力を配列にする */
-const splitTags = (tags) =>
-    String(tags)
-        .split(/[,、]/)
-        .map((tag) => tag.trim())
-        .filter(Boolean)
-        .slice(0, 10);
 
 /** タイトルや指定から URL の名前を作る。日本語だけのときは column にする */
 const buildSlug = (source) => {

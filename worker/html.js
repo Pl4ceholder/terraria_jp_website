@@ -132,8 +132,25 @@ ${column.html}
     });
 };
 
-/** 記事の一覧のページ */
-export const renderList = (columns) => {
+/** 一覧の URL。空の条件は付けない（?q=&tag= を残さない） */
+const columnsHref = ({ q = "", tag = "" } = {}) => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (tag) params.set("tag", tag);
+
+    const search = params.toString();
+    return search ? `/columns?${search}` : "/columns";
+};
+
+/** 記事の一覧のページ。q / tag で絞り込んだときも、条件を出したまま組み立てる */
+export const renderList = (columns, search = {}) => {
+    const { q = "", tag = "", tags = [] } = search;
+    const hasFilter = Boolean(q || tag);
+    const condition = [q ? `「${escapeHtml(q)}」` : "", tag ? `タグ「${escapeHtml(tag)}」` : ""]
+        .filter(Boolean)
+        .join(" ・ ");
+    const status = `${condition ? `${condition} のコラム` : "すべてのコラム"} ${columns.length} 件`;
+
     const items = columns
         .map((column) => {
             const author = column.author
@@ -155,7 +172,62 @@ export const renderList = (columns) => {
             ? `                <ul class="p-columns-list">
 ${items}
                 </ul>`
-            : `                <p>まだコラムはありません。</p>`;
+            : `                <p class="p-columns-list__empty">${
+                  hasFilter
+                      ? "条件に合うコラムはありません。別の言葉で探すか、条件を消してみてください。"
+                      : "まだコラムはありません。"
+              }</p>`;
+
+    const tagItems = tags
+        .map(({ name, count }) => {
+            const active = name === tag;
+            return `                            <li>
+                                <a class="p-columns-filter__tag" href="${escapeHtml(
+                                    columnsHref({ q, tag: name }),
+                                )}"${active ? ' aria-current="true"' : ""}>#${escapeHtml(
+                                    name,
+                                )} <span class="p-columns-filter__tag-count">${count}</span></a>
+                            </li>`;
+        })
+        .join("\n");
+
+    const tagCloud =
+        tags.length > 0
+            ? `
+                    <div class="p-columns-filter__tags">
+                        <p class="p-columns-filter__tags-label">タグから探す</p>
+                        <ul class="p-columns-filter__tag-list">
+${tagItems}
+                        </ul>
+                    </div>`
+            : "";
+
+    const filter = `                <section class="p-columns-filter" aria-label="コラムを絞り込む">
+                    <form class="p-columns-filter__search" method="get" action="/columns" role="search">
+                        <label class="u-visually-hidden" for="column-search">コラムを探す</label>
+                        <input
+                            class="p-columns-filter__input"
+                            id="column-search"
+                            name="q"
+                            type="search"
+                            value="${escapeHtml(q)}"
+                            maxlength="100"
+                            placeholder="題名・本文・タグから探す"
+                        />${
+                            tag
+                                ? `
+                        <input type="hidden" name="tag" value="${escapeHtml(tag)}" />`
+                                : ""
+                        }
+                        <button class="c-button c-button--small" type="submit">探す</button>${
+                            hasFilter
+                                ? `
+                        <a class="p-columns-filter__clear" href="/columns">条件を消す</a>`
+                                : ""
+                        }
+                    </form>${tagCloud}
+                    <p class="p-columns-filter__status">${status}</p>
+                </section>`;
 
     const body = `            <header class="c-page-header">
                 <div class="l-container l-container--narrow">
@@ -171,6 +243,7 @@ ${items}
             </header>
 
             <div class="l-container l-container--narrow">
+${filter}
 ${list}
             </div>`;
 

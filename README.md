@@ -7,6 +7,8 @@ Terraria の日本コミュニティ向けの公式サイトです。
 - 素の HTML / CSS / JavaScript による静的サイト（フレームワーク無し）
 - 公開は Cloudflare Workers。手書きのページは `public/` をそのまま配信し、コラムだけ D1 から組み立てて返す
 - コラムはサイト内のフォームから投稿できる（Git を知らなくてよい）。画像もそのまま上げられる
+- コラムは題名・本文・書いた人・タグから検索でき、タグの件数を見ながら絞り込める
+  （`/columns?q=...&tag=...`）
 - 投稿は「承認待ち」で保存され、運営が公開を決める（`/admin/columns`）
 - Discord のマルチ募集を `/recruit` で見られる（中身は bot から受け取った写し。サイトから Discord は叩かない）。Discord 側で流れた募集は、書き込みの止まった時刻から自動で出なくなる
 - Discord のイベント（これからの予定）が、お知らせページに自動で出る
@@ -99,6 +101,7 @@ public/                    そのまま配信されるページと素材（こ�
 worker/                    動くページと API（Cloudflare Workers）
 ├─ index.js                入口（振り分け・マイページ・実績の受け取り）
 ├─ columns-api.js          コラムの表示・投稿・画像
+├─ columns-search.js       コラムの検索とタグの絞り込み
 ├─ recruit-api.js          募集の受け取りと一覧
 ├─ events-api.js           イベントの受け取りと API
 ├─ activities-api.js       活動の表示・投稿・取り下げ
@@ -131,6 +134,7 @@ scripts/                   補助のスクリプト
 ├─ check-achievements.mjs  実績の取り込み方と引き方を確かめる
 ├─ check-requests.mjs      Web からの依頼の受け取り方と期限を確かめる
 ├─ check-activities.mjs    活動の受け取り方と、公開・書き足し・取り下げを確かめる
+├─ check-columns.mjs       コラムの検索とタグの絞り込みを確かめる
 └─ check-mypage.mjs        マイページのログイン（証の署名・期限・合言葉）を確かめる
 dev/parts.html             共通パーツのプレビュー（開発用。公開されない）
 ```
@@ -154,6 +158,7 @@ npm run check:recruit       # 「いま立っている募集」の選び方を�
 npm run check:achievements  # 実績の取り込み方と引き方を確かめる
 npm run check:requests      # Web からの依頼の受け取り方と期限を確かめる
 npm run check:activities    # 活動の受け取り方と、公開・書き足し・取り下げを確かめる
+npm run check:columns       # コラムの検索とタグの絞り込みを確かめる
 npm run check:mypage        # マイページのログイン（証の署名・期限・合言葉）を確かめる
 npm run deploy              # Cloudflare Workers へ公開する
 ```

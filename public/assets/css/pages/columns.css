@@ -4,6 +4,99 @@
    （投稿フォームの下見でも同じものを使うため、共通部品に置いている）
    ========================================================================== */
 
+/* 検索とタグの絞り込み ------------------------------------------------ */
+.p-columns-filter {
+    margin-block-end: var(--space-m);
+    padding: var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.p-columns-filter__search {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+}
+
+.p-columns-filter__input {
+    flex: 1 1 12rem;
+    min-inline-size: 0;
+    padding: 0.55em 0.9em;
+    color: var(--color-text);
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-s);
+}
+
+.p-columns-filter__input:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.p-columns-filter__clear {
+    align-self: center;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.p-columns-filter__clear:hover {
+    color: var(--color-primary);
+}
+
+.p-columns-filter__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    align-items: center;
+    margin-block-start: var(--space-s);
+}
+
+.p-columns-filter__tags-label {
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+}
+
+.p-columns-filter__tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+}
+
+.p-columns-filter__tag {
+    display: inline-flex;
+    gap: 0.35em;
+    align-items: center;
+    padding: 0.2em 0.7em;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill);
+}
+
+.p-columns-filter__tag:hover {
+    color: var(--color-text);
+    border-color: var(--color-primary);
+}
+
+.p-columns-filter__tag[aria-current="true"] {
+    color: var(--color-on-primary);
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.p-columns-filter__tag-count {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.75;
+}
+
+.p-columns-filter__status {
+    margin-block-start: var(--space-s);
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
 .p-columns-list {
     padding-block-end: var(--space-l);
 }
@@ -44,6 +137,11 @@
     margin-inline-start: auto;
     color: var(--color-text-muted);
     font-size: 0.9rem;
+}
+
+.p-columns-list__empty {
+    padding-block: var(--space-m);
+    color: var(--color-text-muted);
 }
 
 /* 狭い画面では書いた人が入りきらないので、右寄せをやめてタイトルの下に置く */

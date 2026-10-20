@@ -17,6 +17,7 @@
         "check:requests": "node scripts/check-requests.mjs",
         "check:activities": "node scripts/check-activities.mjs",
         "check:mypage": "node scripts/check-mypage.mjs",
+        "check:columns": "node scripts/check-columns.mjs",
         "db:local": "wrangler d1 execute terraria-jp --local --file=worker/schema.sql",
         "db:local:seed": "wrangler d1 execute terraria-jp --local --file=worker/seed.sql",
         "db:remote": "wrangler d1 execute terraria-jp --remote --file=worker/schema.sql",
