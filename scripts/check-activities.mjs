@@ -237,6 +237,16 @@ check(
 
 // --- 7. Markdown（画像・危ない行き先） -------------------------------------
 
+// 承認制だったころの「承認待ち」は、いまも出さない（デプロイ時に見えないように）
+db.prepare(
+    `INSERT INTO activity_posts
+         (activity_id, body_md, body_html, author_id, author_name, author_icon,
+          status, created_at, published_at)
+     VALUES ('thread0001', '古い承認待ち', '<p>古い承認待ち</p>', ?, 'たろう', '',
+             'pending', ?, NULL)`,
+).run(AUTHOR.id, LATER);
+check("承認制だったころの承認待ちは、出さない", postsOf("thread0001").length === 1);
+
 const withImage = renderMarkdown("![スクリーンショット](/img/abc123)");
 check(
     "画像を Markdown で置ける",

@@ -127,11 +127,16 @@ export const ACTIVITY_ONE_SQL = `
      WHERE id = ?1
 `;
 
-/** その活動の書き込み（古い順。書き込みはすべて、書いた時点で公開） */
+/**
+ * その活動の書き込み（古い順）。
+ *
+ * status を見ているのは、承認制だったころの「承認待ち」を出さないため。
+ * いまは書いた時点で published になるので、新しい書き込みは必ず出る。
+ */
 export const ACTIVITY_POSTS_SQL = `
     SELECT id, body_html, author_name, author_icon, created_at
       FROM activity_posts
-     WHERE activity_id = ?1
+     WHERE activity_id = ?1 AND status = 'published'
      ORDER BY id
 `;
 
