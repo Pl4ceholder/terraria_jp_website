@@ -10,7 +10,9 @@ Terraria の日本コミュニティ向けの公式サイトです。
 - 投稿は「承認待ち」で保存され、運営が公開を決める（`/admin/columns`）
 - Discord のマルチ募集を `/recruit` で見られる（中身は bot から受け取った写し。サイトから Discord は叩かない）。Discord 側で流れた募集は、書き込みの止まった時刻から自動で出なくなる
 - Discord のイベント（これからの予定）が、お知らせページに自動で出る
-- Discord の実績（誰が何を解放したか）も bot から受け取って保存している（マイページで見せる。ページはこれから）
+- Discord の実績（誰が何を解放したか）も bot から受け取って保存している
+- マイページ（Discord でログイン）で、自分の実績を見て、称号を着け外しできる
+- 実績の付与・剥奪は管理画面（`/admin/achievements`）から行える。サイトは「お願い」を置くだけで、Discord への反映は bot が 30 秒ごとに拾って行う（サイトは Discord を叩かない）
 - 整形・検査はエディタの保存時に自動で走る（コミット前のチェックは無し）
 - Node.js（20.19.0 以上）は Stylelint と Wrangler に使う
 
@@ -98,8 +100,10 @@ worker/                    動くページと API（Cloudflare Workers）
 ├─ recruitments.js         「いま立っている募集」の選び方と、流れる時刻
 ├─ events.js               「これからのイベント」を選ぶ条件
 ├─ achievements.js         実績の取り込み方と、自分の実績の引き方
+├─ requests.js             Web からの依頼（実績の付与・称号の着脱）の受け取り方と期限
 ├─ auth.js                 マイページの Discord ログイン（OAuth2）と、入っている証
 ├─ mypage.js               マイページの HTML
+├─ admin-achievements.js   実績の付与・剥奪の画面（運営用）
 ├─ signing.js              合言葉の見比べ方・クッキーの読み方・署名
 ├─ markdown.js             Markdown → HTML
 ├─ migrations/             すでに動いている DB に列や表を足す SQL
@@ -110,6 +114,7 @@ scripts/                   補助のスクリプト
 ├─ check-events.mjs        「これからのイベント」の選び方を確かめる
 ├─ check-recruit.mjs       「いま立っている募集」の選び方を確かめる
 ├─ check-achievements.mjs  実績の取り込み方と引き方を確かめる
+├─ check-requests.mjs      Web からの依頼の受け取り方と期限を確かめる
 └─ check-mypage.mjs        マイページのログイン（証の署名・期限・合言葉）を確かめる
 dev/parts.html             共通パーツのプレビュー（開発用。公開されない）
 ```
@@ -131,6 +136,7 @@ npm run check:free          # 無料枠だけで動くか確かめる
 npm run check:events        # 「これからのイベント」の選び方を確かめる
 npm run check:recruit       # 「いま立っている募集」の選び方を確かめる
 npm run check:achievements  # 実績の取り込み方と引き方を確かめる
+npm run check:requests      # Web からの依頼の受け取り方と期限を確かめる
 npm run check:mypage        # マイページのログイン（証の署名・期限・合言葉）を確かめる
 npm run deploy              # Cloudflare Workers へ公開する
 ```
