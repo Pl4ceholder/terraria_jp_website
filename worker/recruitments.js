@@ -13,7 +13,7 @@
 // ==========================================================================
 
 /** Discord の既定。最後の書き込みから 24 時間で流れる */
-export const DEFAULT_ARCHIVE_MINUTES = 1440;
+const DEFAULT_ARCHIVE_MINUTES = 1440;
 
 /** 流れる時刻を過ぎても、これだけは出しておく（bot の次の知らせを待つ猶予） */
 export const RECRUIT_GRACE_MINUTES = 60;

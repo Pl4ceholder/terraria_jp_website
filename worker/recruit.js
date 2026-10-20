@@ -13,7 +13,7 @@
 import { escapeHtml } from "./markdown.js";
 import { formatAgo, formatJst, layout, SITE_NAME } from "./html.js";
 
-export const RECRUIT_TITLE = "マルチ募集";
+const RECRUIT_TITLE = "マルチ募集";
 
 /** 最終更新から、この分数を過ぎたら「古いかもしれない」と伝える */
 const STALE_MINUTES = 30;

@@ -13,7 +13,7 @@
 import { escapeHtml } from "./markdown.js";
 import { formatAgo, formatJst, layout, SITE_NAME } from "./html.js";
 
-export const MYPAGE_TITLE = "マイページ";
+const MYPAGE_TITLE = "マイページ";
 
 /** 最終更新から、この分数を過ぎたら「古いかもしれない」と伝える（bot は 30 分ごとに送る） */
 const STALE_MINUTES = 90;

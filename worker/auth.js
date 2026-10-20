@@ -29,7 +29,7 @@ export const USER_COOKIE = "mypage_user";
 export const STATE_COOKIE = "mypage_state";
 
 /** 入っている証の期限（日）。自分の実績を見るだけなので、長めにする */
-export const USER_SESSION_DAYS = 30;
+const USER_SESSION_DAYS = 30;
 
 /** 合言葉（state）の期限（分）。行き来の間に切れるくらいでよい */
 export const STATE_MINUTES = 10;
@@ -191,7 +191,7 @@ export const buildStateValue = (state, next = "") => {
 };
 
 /** クッキーから、合言葉と戻り先を読む。読めない戻り先は空にする */
-export const readStateValue = (request) => {
+const readStateValue = (request) => {
     const [state, encoded = ""] = readCookie(request, STATE_COOKIE).split(".");
     if (!encoded) return { state, next: "" };
 

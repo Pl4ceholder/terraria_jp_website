@@ -16,8 +16,8 @@ import { ACTIVITY_LIMITS } from "./activities.js";
 import { formatAgo, formatJst, layout, SITE_NAME } from "./html.js";
 import { escapeHtml } from "./markdown.js";
 
-export const ACTIVITIES_TITLE = "活動";
-export const ACTIVITY_DESCRIPTION =
+const ACTIVITIES_TITLE = "活動";
+const ACTIVITY_DESCRIPTION =
     "サーバーでの出来事や、いま進めていることを、Discord のスレッドのように書き残せます。書けるのは Discord でログインした人だけです。";
 
 /** 画面で使う動き（下見・画像）の読み込み。フォームのあるページだけに入れる */

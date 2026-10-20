@@ -79,7 +79,7 @@ R2 は無料枠（10GB）こそありますが、超えた分は請求が来ま�
 - 1 枚 1MB では足りない（スクリーンショットや高解像度の絵を載せたい）
 - D1 のバックアップ（Time Travel・無料は 7 日分）が重くなってきた
 
-移すときも、画像の URL（`/img/<id>`）は変えずに済みます。直すのは `worker/index.js` の
+移すときも、画像の URL（`/img/<id>`）は変えずに済みます。直すのは `worker/columns-api.js` の
 アップロードと取り出し、`worker/schema.sql`、`wrangler.jsonc` の 3 か所です。ただし R2 を
 使うとカードの登録と従量課金を受け入れることになるので、先に運営で相談してください。
 
@@ -97,7 +97,16 @@ public/                    そのまま配信されるページと素材（こ�
    ├─ js/
    └─ img/
 worker/                    動くページと API（Cloudflare Workers）
-├─ index.js                入口（振り分けと API）
+├─ index.js                入口（振り分け・マイページ・実績の受け取り）
+├─ columns-api.js          コラムの表示・投稿・画像
+├─ recruit-api.js          募集の受け取りと一覧
+├─ events-api.js           イベントの受け取りと API
+├─ activities-api.js       活動の表示・投稿・取り下げ
+├─ admin-session.js        合言葉の出入りと「入っている証」
+├─ http.js                 返事の形と、送られてきたものの読み取り
+├─ values.js               届いた値の整え方（長さ・数・日時）
+├─ sync.js                 bot の合言葉の確かめ方
+├─ admin-nav.js            管理画面の共通ナビ
 ├─ html.js                 コラムの一覧・記事の HTML
 ├─ recruit.js              マルチ募集の HTML
 ├─ activities.js           活動の決まりごと（入力の確かめ方・保存の SQL）

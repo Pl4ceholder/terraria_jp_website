@@ -70,10 +70,30 @@
 │     │     └─ admin.js      承認
 │     └─ img/                画像（命名は kebab-case、例: hero-bg.png）
 ├─ worker/                   動くページと API（Cloudflare Workers）
-│  ├─ index.js               入口（振り分けと API）
+│  ├─ index.js               入口（振り分け・マイページ・実績の受け取り）
+│  ├─ columns-api.js         コラムの表示・投稿・画像
+│  ├─ recruit-api.js         募集の受け取りと一覧
+│  ├─ events-api.js          イベントの受け取りと API
+│  ├─ activities-api.js      活動の表示・投稿・取り下げ
+│  ├─ admin-session.js       合言葉の出入りと「入っている証」
+│  ├─ http.js                返事の形と、送られてきたものの読み取り
+│  ├─ values.js              届いた値の整え方（長さ・数・日時）
+│  ├─ sync.js                bot の合言葉の確かめ方
 │  ├─ html.js                一覧・記事・404 の HTML
+│  ├─ activity.js            活動ページの HTML
+│  ├─ activities.js          活動の検証と SQL
+│  ├─ achievements.js        実績の取り込みと SQL
+│  ├─ requests.js            実績・称号の依頼
+│  ├─ admin-achievements.js  実績の管理画面
+│  ├─ admin-activities.js    活動の管理画面
+│  ├─ admin-nav.js           管理画面の共通ナビ
+│  ├─ auth.js                Discord ログイン
+│  ├─ mypage.js              マイページの HTML
 │  ├─ recruit.js             マルチ募集の HTML
+│  ├─ recruitments.js        募集の選び方
+│  ├─ events.js              イベントの選び方
 │  ├─ markdown.js            Markdown → HTML
+│  ├─ signing.js             クッキーの署名
 │  ├─ schema.sql             保存場所の定義
 │  └─ seed.sql               動作確認用の記事
 ├─ scripts/
@@ -95,9 +115,9 @@
 - 複数ページで使い回す HTML のまとまり（ヘッダーなど）→
   `public/assets/js/components/<名前>.js`（第 4.2 節）
 - 1 ページだけの動き → `public/assets/js/pages/<ページ名>.js`（第 4.3 節）
-  （`post.js` / `news.js` / `admin.js`）
+  （`post.js` / `activity.js` / `news.js` / `admin.js`）
 - 新しい CSS ファイルを足したら、必ず `style.css` に `@import` を追記する
-- サーバー側の処理と API → `worker/index.js`（第 6 章）
+- サーバー側の処理と API → `worker/`（入口は `index.js`、分野ごとに `*-api.js`。第 6 章）
 - 保存場所（テーブル）を変える → `worker/schema.sql` に書き、ローカルと本番の両方に適用する
   （第 6 章）
 - 運営だけが使うページ → `public/admin/` に置き、`<meta name="robots" content="noindex">` を付ける
@@ -223,14 +243,14 @@ block__element--modifier
 
 ### 4.3 ページ固有のスクリプト
 
-そのページだけの動きは `public/assets/js/pages/<ページ名>.js` に置く（`post.js` / `admin.js`）。
+そのページだけの動きは `public/assets/js/pages/<ページ名>.js` に置く（`post.js` / `activity.js` / `admin.js`）。
 読み込みは共通パーツと同じく `<script src="..." defer></script>` で行う。
 
 - ページ側は `data-*` で目印を付け、スクリプトは `document.querySelector("[data-...]")` で拾う
 - サーバーとのやり取りは `fetch`。返ってくる JSON は `{ ok: true, ... }` か
   `{ ok: false, message: "..." }` の形に揃え、`message` はそのまま画面に出す
   （文言はサーバー側に寄せると、直す場所が 1 か所で済む）
-- 入力の上限はサーバー側（`worker/index.js` の `LIMITS`）と揃える。画面側だけで止めない
+- 入力の上限はサーバー側（コラムは `worker/columns-api.js` の `LIMITS`）と揃える。画面側だけで止めない
 - 送信中はボタンを `disabled` にして、二重送信を防ぐ
 - 画面の切り替え（ログイン前 / ログイン後など）は `hidden` の付け外しで行い、見た目は CSS で変える
 
@@ -288,8 +308,12 @@ chore: Prettier と Stylelint を導入
 
 動く部分は `worker/` に置く。保存場所は Cloudflare D1 で、記事も画像もそこに入る。
 
-- 振り分けと API は `worker/index.js`、コラムの一覧・記事の HTML は `worker/html.js`、
-  マルチ募集の HTML は `worker/recruit.js`、Markdown の変換は `worker/markdown.js`
+- 振り分けは `worker/index.js`。API は分野ごとに `worker/columns-api.js`（コラム・画像）、
+  `worker/recruit-api.js`、`worker/events-api.js`、`worker/activities-api.js` に分ける
+- 返事の形と入力の読み取りは `worker/http.js`、合言葉の出入りは `worker/admin-session.js`、
+  届いた値の整え方は `worker/values.js` に置く（同じ道具を書き写さない）
+- コラムの一覧・記事の HTML は `worker/html.js`、マルチ募集の HTML は `worker/recruit.js`、
+  Markdown の変換は `worker/markdown.js`
 - Discord の内容をサイトに出すときは、サイトから Discord を叩かず、bot から
   `POST /api/internal/...` で受け取って D1 に入れる。合言葉は `SYNC_SECRET`（合言葉が
   無ければ 503、違えば 401）。受け取った内容で丸ごと入れ替え、何度届いても同じ結果にする

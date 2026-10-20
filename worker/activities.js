@@ -13,6 +13,7 @@
 // ==========================================================================
 
 import { buildExcerpt } from "./markdown.js";
+import { trimText } from "./values.js";
 
 /** 入力できる長さの上限 */
 export const ACTIVITY_LIMITS = {
@@ -33,8 +34,6 @@ export const ADMIN_ACTIVITY_LIST_MAX = 30;
 
 /** 一覧に出す、本文の抜粋の長さ */
 const EXCERPT_MAX = 120;
-
-const trimText = (value) => String(value ?? "").trim();
 
 /** 新しい活動の入力を確かめる。問題があれば、そのまま画面に出せる文を返す */
 export const parseThread = (input) => {

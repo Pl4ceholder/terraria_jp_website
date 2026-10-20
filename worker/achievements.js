@@ -11,6 +11,8 @@
 // そのため中身は bot から届いた写しで、届いた内容で丸ごと入れ替える。
 // ==========================================================================
 
+import { trimTo } from "./values.js";
+
 /** 一度に受け取る実績の数（Discord 側の定義は、いまのところ数件） */
 export const ACHIEVEMENT_MAX = 20;
 
@@ -18,7 +20,7 @@ export const ACHIEVEMENT_MAX = 20;
 export const ACHIEVEMENT_MEMBERS_MAX = 500;
 
 /** 実績の名前の長さ（Discord のロール名は 100 文字まで） */
-export const ACHIEVEMENT_NAME_MAX = 100;
+const ACHIEVEMENT_NAME_MAX = 100;
 
 /** 人の表示名の長さ（Discord の表示名。管理画面で相手を選ぶときに使う） */
 export const MEMBER_NAME_MAX = 80;
@@ -139,9 +141,3 @@ export const MEMBER_ONE_SQL = `
       FROM member_achievements m
      WHERE m.user_id = ?1
 `;
-
-/** 文字列を、長さを切って整える */
-const trimTo = (value, max) =>
-    String(value ?? "")
-        .trim()
-        .slice(0, max);

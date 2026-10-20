@@ -11,7 +11,7 @@
 import { buildExcerpt, escapeHtml } from "./markdown.js";
 
 export const SITE_NAME = "Terraria JP";
-export const COLUMNS_TITLE = "コラム";
+const COLUMNS_TITLE = "コラム";
 
 /** ページの外側（<head> と共通パーツ）。scripts は、そのページだけの動き */
 export const layout = ({

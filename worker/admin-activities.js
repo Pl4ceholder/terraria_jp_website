@@ -12,21 +12,10 @@
 // ==========================================================================
 
 import { formatJst, layout, SITE_NAME } from "./html.js";
-import { escapeHtml } from "./markdown.js";
+import { buildExcerpt, escapeHtml } from "./markdown.js";
+import { renderAdminNav } from "./admin-nav.js";
 
-export const ADMIN_ACTIVITIES_TITLE = "活動の管理";
-
-/** 本文（Markdown）を、確認用の 1 つの文にする */
-const toExcerpt = (markdown, limit = 240) => {
-    const text = String(markdown ?? "")
-        .replace(/\r\n/g, "\n")
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .join(" ");
-
-    return text.length > limit ? `${text.slice(0, limit)}…` : text;
-};
+const ADMIN_ACTIVITIES_TITLE = "活動の管理";
 
 /** 押したあとに出す文（?done=… と対応） */
 const DONE_TEXTS = {
@@ -74,7 +63,7 @@ const renderThread = (
                             thread.post_count ?? 1,
                         )} 件の書き込み</p>
                         <p class="p-admin-activities__excerpt">${escapeHtml(
-                            toExcerpt(thread.body_md),
+                            buildExcerpt(thread.body_md, 240),
                         )}</p>
                         <div class="p-admin-activities__actions">
 ${renderAction({ id: thread.id, action, label, danger })}
@@ -129,13 +118,7 @@ export const renderAdminActivities = ({ published = [], hidden = [], done = "", 
             </header>
 
             <div class="l-container">
-                <nav class="c-admin-nav" aria-label="運営のページ">
-                    <a class="c-admin-nav__link" href="/admin/columns">コラムの承認</a>
-                    <a class="c-admin-nav__link" href="/admin/activities" aria-current="page"
-                        >活動の管理</a
-                    >
-                    <a class="c-admin-nav__link" href="/admin/achievements">実績の付与・剥奪</a>
-                </nav>
+                ${renderAdminNav("/admin/activities")}
 
                 <div class="p-admin-activities">
 ${notice}
