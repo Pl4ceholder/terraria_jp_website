@@ -11,6 +11,8 @@
 // 「称号を着ける」を、あとから当てないため。
 // ==========================================================================
 
+import { trimTo } from "./values.js";
+
 /** 依頼を置いてから、これを過ぎたものは捨てる（分） */
 export const REQUEST_TTL_MINUTES = 10;
 
@@ -18,10 +20,10 @@ export const REQUEST_TTL_MINUTES = 10;
 export const REQUEST_LIST_MAX = 20;
 
 /** 画面に出す理由の長さ（bot が書く） */
-export const REQUEST_MESSAGE_MAX = 300;
+const REQUEST_MESSAGE_MAX = 300;
 
 /** 種類と、その種類で使える操作 */
-export const REQUEST_ACTIONS = {
+const REQUEST_ACTIONS = {
     // 称号の着脱（マイページ）
     title: ["set", "clear"],
     // 実績の付与・剥奪（管理画面）
@@ -29,13 +31,13 @@ export const REQUEST_ACTIONS = {
 };
 
 /** bot が書き戻す結果 */
-export const RESULT_STATUSES = ["done", "failed", "expired"];
+const RESULT_STATUSES = ["done", "failed", "expired"];
 
 /** 依頼を出した人（画面の出し分けに使う） */
-export const REQUEST_SOURCES = ["mypage", "admin"];
+const REQUEST_SOURCES = ["mypage", "admin"];
 
 /** Discord の ID か（スノーフレーク。いまは 19 桁だが、余裕をもたせる） */
-export const isSnowflake = (value) => /^\d{17,20}$/.test(String(value ?? "").trim());
+const isSnowflake = (value) => /^\d{17,20}$/.test(String(value ?? "").trim());
 
 /**
  * 入力から Discord のユーザー ID を取り出す。
@@ -194,9 +196,3 @@ export const REQUEST_CLEANUP_SQL = `
     DELETE FROM achievement_requests
      WHERE status <> 'pending' AND requested_at < ?1
 `;
-
-/** 文字列を、長さを切って整える */
-const trimTo = (value, max) =>
-    String(value ?? "")
-        .trim()
-        .slice(0, max);

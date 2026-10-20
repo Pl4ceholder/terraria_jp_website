@@ -12,8 +12,9 @@
 
 import { escapeHtml } from "./markdown.js";
 import { layout, SITE_NAME } from "./html.js";
+import { renderAdminNav } from "./admin-nav.js";
 
-export const ADMIN_ACHIEVEMENTS_TITLE = "実績の付与・剥奪";
+const ADMIN_ACHIEVEMENTS_TITLE = "実績の付与・剥奪";
 
 /** 反映を待っている間、この秒数で画面を読み直す（javascript を使わずに済ませる） */
 const REFRESH_SECONDS = 5;
@@ -202,6 +203,8 @@ ${renderRows({ userId, rows, waiting })}`
             </header>
 
             <div class="l-container">
+                ${renderAdminNav("/admin/achievements")}
+
                 <div class="p-admin-achievements">
                     <form class="p-admin-achievements__search" method="get" action="/admin/achievements">
                         <label class="p-admin-achievements__label" for="admin-achievement-user"

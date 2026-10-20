@@ -16,6 +16,7 @@
 import {
     buildAuthorizeUrl,
     buildStateCookie,
+    buildStateValue,
     buildUserCookie,
     clearStateCookie,
     clearUserCookie,
@@ -25,8 +26,10 @@ import {
     isSameState,
     issueUserSession,
     makeState,
+    nextAfterLogin,
     readUserSession,
     redirectUriOf,
+    safeNext,
     STATE_COOKIE,
     STATE_MINUTES,
     toUser,
@@ -150,6 +153,48 @@ check(
         fakeRequest("https://example.com/auth/discord/callback", {}),
         new URLSearchParams(),
     ) === false,
+);
+
+// --- 3.5 ログインしたあとの戻り先（next） -----------------------------------
+
+const withNext = fakeRequest("https://example.com/auth/discord/callback", {
+    [STATE_COOKIE]: buildStateValue(state, "/activities/new"),
+});
+
+check(
+    "戻り先を付けた合言葉でも、合っていれば通す",
+    isSameState(withNext, new URLSearchParams({ state })) === true,
+);
+check(
+    "戻り先を読み出せる",
+    nextAfterLogin(withNext) === "/activities/new",
+    nextAfterLogin(withNext),
+);
+check(
+    "戻り先が無ければ、マイページへ戻す",
+    nextAfterLogin(withState) === "/mypage",
+    nextAfterLogin(withState),
+);
+check(
+    "よそのサイトへの戻り先（//）は、使わない",
+    nextAfterLogin(
+        fakeRequest("https://example.com/auth/discord/callback", {
+            [STATE_COOKIE]: buildStateValue(state, "//evil.example/path"),
+        }),
+    ) === "/mypage",
+);
+check("「/」から始まらない戻り先は使わない", safeNext("https://evil.example") === "");
+check("改行が混ざった戻り先は使わない", safeNext("/activities\nSet-Cookie: a=b") === "");
+check("「\\」で始まる戻り先は使わない", safeNext("/\\evil.example") === "");
+check("このサイトの道は通す", safeNext("/activities/abc") === "/activities/abc");
+check("クエリ付きでも通す", safeNext("/activities?x=1") === "/activities?x=1");
+check(
+    "壊れた戻り先でも、落ちずにマイページへ戻す",
+    nextAfterLogin(
+        fakeRequest("https://example.com/auth/discord/callback", {
+            [STATE_COOKIE]: `${state}.!!!!`,
+        }),
+    ) === "/mypage",
 );
 
 // --- 4. 入っている証 --------------------------------------------------------

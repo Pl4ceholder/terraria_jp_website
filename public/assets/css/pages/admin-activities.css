@@ -1,0 +1,106 @@
+/* ==========================================================================
+   admin-activities.css — p- : 活動の管理（/admin/activities）専用
+   公開中の活動を見て、問題があるものだけ取り下げる（戻すこともできる）。
+   ========================================================================== */
+
+.p-admin-activities {
+    display: grid;
+    gap: var(--space-m);
+    padding-block-end: var(--space-l);
+}
+
+/* 押したあとの案内 ------------------------------------------------------ */
+
+.p-admin-activities__notice {
+    padding: var(--space-xs) var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-primary-dark);
+    border-radius: var(--radius-s);
+}
+
+.p-admin-activities__notice--failed {
+    color: var(--color-danger);
+    border-color: var(--color-danger);
+}
+
+/* 節（公開中・取り下げた活動） ---------------------------------------- */
+
+.p-admin-activities__section {
+    display: grid;
+    gap: var(--space-s);
+}
+
+.p-admin-activities__heading {
+    padding-block-end: var(--space-xs);
+    font-size: 1.15rem;
+    border-block-end: 1px solid var(--color-border);
+}
+
+.p-admin-activities__items {
+    display: grid;
+    gap: var(--space-s);
+}
+
+.p-admin-activities__item {
+    padding: var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.p-admin-activities__empty {
+    color: var(--color-text-muted);
+}
+
+/* 1 件の中身 ------------------------------------------------------------ */
+
+.p-admin-activities__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    align-items: baseline;
+}
+
+.p-admin-activities__author {
+    font-weight: 700;
+}
+
+.p-admin-activities__time {
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+}
+
+.p-admin-activities__title {
+    margin-block-start: var(--space-xs);
+    font-size: 1.05rem;
+}
+
+.p-admin-activities__title-link {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+.p-admin-activities__parent {
+    margin-block-start: var(--space-xs);
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.p-admin-activities__excerpt {
+    margin-block-start: var(--space-xs);
+    color: var(--color-text-muted);
+    overflow-wrap: anywhere;
+}
+
+/* 取り下げる・戻す ------------------------------------------------------ */
+
+.p-admin-activities__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-block-start: var(--space-s);
+}
+
+.p-admin-activities__action {
+    display: flex;
+}

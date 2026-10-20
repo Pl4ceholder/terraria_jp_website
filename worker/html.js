@@ -11,15 +11,16 @@
 import { buildExcerpt, escapeHtml } from "./markdown.js";
 
 export const SITE_NAME = "Terraria JP";
-export const COLUMNS_TITLE = "コラム";
+const COLUMNS_TITLE = "コラム";
 
-/** ページの外側（<head> と共通パーツ） */
+/** ページの外側（<head> と共通パーツ）。scripts は、そのページだけの動き */
 export const layout = ({
     title,
     description,
     body,
     refreshSeconds = 0,
     noindex = false,
+    scripts = [],
 }) => `<!doctype html>
 <html lang="ja">
     <head>
@@ -54,7 +55,12 @@ ${body}
         <x-site-footer></x-site-footer>
 
         <script src="/assets/js/components/site-header.js" defer></script>
-        <script src="/assets/js/components/site-footer.js" defer></script>
+        <script src="/assets/js/components/site-footer.js" defer></script>${
+            scripts.length > 0
+                ? `
+${scripts.map((src) => `        <script src="${escapeHtml(src)}" defer></script>`).join("\n")}`
+                : ""
+        }
     </body>
 </html>
 `;

@@ -13,7 +13,7 @@
 // ==========================================================================
 
 /** Discord の既定。最後の書き込みから 24 時間で流れる */
-export const DEFAULT_ARCHIVE_MINUTES = 1440;
+const DEFAULT_ARCHIVE_MINUTES = 1440;
 
 /** 流れる時刻を過ぎても、これだけは出しておく（bot の次の知らせを待つ猶予） */
 export const RECRUIT_GRACE_MINUTES = 60;
@@ -43,7 +43,7 @@ export const deadlineOf = (row) => {
  * 流れる時刻が分からないものは、判断できないので出す。
  */
 export const RECRUIT_LIST_SQL = `
-    SELECT id, guild_id, mode, platform, vc, connection, message,
+    SELECT id, guild_id, mode, platform, vc, message,
            author_name, author_icon, started_at, last_activity_at, message_count, deadline_at
       FROM recruitments
      WHERE deadline_at IS NULL OR deadline_at >= ?1

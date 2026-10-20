@@ -37,10 +37,10 @@ db.exec(schema);
  */
 const insert = db.prepare(
     `INSERT INTO recruitments
-         (id, guild_id, channel_id, message_id, mode, platform, vc, connection, message,
+         (id, guild_id, channel_id, message_id, mode, platform, vc, message,
           author_id, author_name, author_icon, started_at, last_activity_at,
           message_count, archive_minutes, deadline_at, synced_at)
-     VALUES (?1, 'guild', '', '', 'バニラマルチ', 'PC', 'バニラVC1', 'なし', '', '', '', '',
+     VALUES (?1, 'guild', '', '', 'バニラマルチ', 'PC', 'バニラVC1', '', '', '', '',
              ?2, ?3, ?4, ?5, ?6, ?7)`,
 );
 

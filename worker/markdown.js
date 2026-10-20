@@ -29,11 +29,31 @@ const renderHtml = (token) => {
     return token.block ? `${output}\n` : output;
 };
 
+/**
+ * リンク・画像の行き先として許すもの。
+ *
+ * 本文は誰でも書けるので、`javascript:` のような行き先を踏ませない。
+ * サイト内（/ で始まる）・ページ内（#）・http(s)・mailto だけを通す。
+ */
+const isSafeUrl = (url) => {
+    const value = String(url ?? "").trim();
+    if (value === "" || value.startsWith("/") || value.startsWith("#")) return true;
+
+    return /^(?:https?:\/\/|mailto:)/i.test(value);
+};
+
+/** 行き先を消した画像の代わり（何も出さない 1x1 の点） */
+const BLANK_IMAGE = "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
+
 // 改行をそのまま改行として扱うのは、Markdown に慣れていない人向け
 marked.use({
     gfm: true,
     breaks: true,
     renderer: { html: renderHtml },
+    walkTokens(token) {
+        if (token.type === "link" && !isSafeUrl(token.href)) token.href = "#";
+        if (token.type === "image" && !isSafeUrl(token.href)) token.href = BLANK_IMAGE;
+    },
 });
 
 /** Markdown を HTML にする */

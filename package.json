@@ -15,6 +15,7 @@
         "check:recruit": "node scripts/check-recruit.mjs",
         "check:achievements": "node scripts/check-achievements.mjs",
         "check:requests": "node scripts/check-requests.mjs",
+        "check:activities": "node scripts/check-activities.mjs",
         "check:mypage": "node scripts/check-mypage.mjs",
         "db:local": "wrangler d1 execute terraria-jp --local --file=worker/schema.sql",
         "db:local:seed": "wrangler d1 execute terraria-jp --local --file=worker/seed.sql",
