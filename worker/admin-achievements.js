@@ -202,30 +202,32 @@ ${renderRows({ userId, rows, waiting })}`
                 </div>
             </header>
 
-            <div class="l-container">
+            <div class="l-container l-admin">
                 ${renderAdminNav("/admin/achievements")}
 
-                <div class="p-admin-achievements">
-                    <form class="p-admin-achievements__search" method="get" action="/admin/achievements">
-                        <label class="p-admin-achievements__label" for="admin-achievement-user"
-                            >相手</label
-                        >
-                        <input
-                            class="p-admin-achievements__input"
-                            id="admin-achievement-user"
-                            name="q"
-                            type="text"
-                            value="${escapeHtml(query)}"
-                            placeholder="Discord の ID か、名前の一部"
-                        />
-                        <button class="c-button c-button--small" type="submit">開く</button>
-                        <p class="p-admin-achievements__hint">
-                            Discord の ID（またはメンション）を入れると、その人を直接開きます。名前の一部なら、その人が出てきます。
-                        </p>
-                    </form>
+                <div class="l-admin__content">
+                    <div class="p-admin-achievements">
+                        <form class="p-admin-achievements__search" method="get" action="/admin/achievements">
+                            <label class="p-admin-achievements__label" for="admin-achievement-user"
+                                >相手</label
+                            >
+                            <input
+                                class="p-admin-achievements__input"
+                                id="admin-achievement-user"
+                                name="q"
+                                type="text"
+                                value="${escapeHtml(query)}"
+                                placeholder="Discord の ID か、名前の一部"
+                            />
+                            <button class="c-button c-button--small" type="submit">開く</button>
+                            <p class="p-admin-achievements__hint">
+                                Discord の ID（またはメンション）を入れると、その人を直接開きます。名前の一部なら、その人が出てきます。
+                            </p>
+                        </form>
 
 ${error ? renderError(error) : renderNotice({ pending, result, now })}
 ${detail}
+                    </div>
                 </div>
             </div>`;
 

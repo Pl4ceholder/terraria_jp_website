@@ -24,88 +24,122 @@
                 </div>
             </header>
 
-            <div class="l-container">
-                <nav class="c-admin-nav" aria-label="運営のページ">
-                    <a class="c-admin-nav__link" href="/admin/columns" aria-current="page"
-                        >コラムの承認</a
-                    >
-                    <a class="c-admin-nav__link" href="/admin/activities">活動の管理</a>
-                    <a class="c-admin-nav__link" href="/admin/achievements">実績の付与・剥奪</a>
-                </nav>
+            <div class="l-container l-admin">
+                <aside class="c-admin-sidebar" aria-label="運営メニュー">
+                    <p class="c-admin-sidebar__title">運営メニュー</p>
+                    <nav aria-label="運営のページ">
+                        <ul class="c-admin-sidebar__list">
+                            <li>
+                                <a
+                                    class="c-admin-sidebar__link"
+                                    href="/admin/columns"
+                                    aria-current="page"
+                                    >コラムの承認</a
+                                >
+                            </li>
+                            <li>
+                                <a class="c-admin-sidebar__link" href="/admin/activities"
+                                    >活動の管理</a
+                                >
+                            </li>
+                            <li>
+                                <a class="c-admin-sidebar__link" href="/admin/achievements"
+                                    >実績の付与・剥奪</a
+                                >
+                            </li>
+                        </ul>
+                    </nav>
+                </aside>
 
-                <div class="p-admin">
-                    <!-- 合言葉を入れる前 -->
-                    <section class="p-admin__login" data-admin-login>
-                        <form class="p-admin__login-form" data-admin-login-form novalidate>
-                            <div class="p-admin__field">
-                                <label class="p-admin__label" for="admin-password">合言葉</label>
-                                <input
-                                    class="p-admin__input"
-                                    id="admin-password"
-                                    type="password"
-                                    autocomplete="current-password"
-                                    data-admin-password
-                                />
-                                <p class="p-admin__hint">
-                                    運営の間で共有している合言葉を入れます。
-                                </p>
+                <div class="l-admin__content">
+                    <div class="p-admin">
+                        <!-- 合言葉を入れる前 -->
+                        <section class="p-admin__login" data-admin-login>
+                            <form class="p-admin__login-form" data-admin-login-form novalidate>
+                                <div class="p-admin__field">
+                                    <label class="p-admin__label" for="admin-password"
+                                        >合言葉</label
+                                    >
+                                    <input
+                                        class="p-admin__input"
+                                        id="admin-password"
+                                        type="password"
+                                        autocomplete="current-password"
+                                        data-admin-password
+                                    />
+                                    <p class="p-admin__hint">
+                                        運営の間で共有している合言葉を入れます。
+                                    </p>
+                                </div>
+                                <button class="c-button" type="submit" data-admin-login-submit>
+                                    入る
+                                </button>
+                            </form>
+                            <p
+                                class="p-admin__message"
+                                role="status"
+                                data-admin-login-message
+                                hidden
+                            ></p>
+                        </section>
+
+                        <!-- 入ったあと -->
+                        <section class="p-admin__panel" data-admin-panel hidden>
+                            <div class="p-admin__toolbar">
+                                <div
+                                    class="p-admin__filters"
+                                    role="group"
+                                    aria-label="表示するもの"
+                                >
+                                    <button
+                                        class="p-admin__filter"
+                                        type="button"
+                                        data-admin-filter="pending"
+                                    >
+                                        承認待ち<span
+                                            class="p-admin__count"
+                                            data-admin-count="pending"
+                                            >0</span
+                                        >
+                                    </button>
+                                    <button
+                                        class="p-admin__filter"
+                                        type="button"
+                                        data-admin-filter="published"
+                                    >
+                                        公開中<span
+                                            class="p-admin__count"
+                                            data-admin-count="published"
+                                            >0</span
+                                        >
+                                    </button>
+                                    <button
+                                        class="p-admin__filter"
+                                        type="button"
+                                        data-admin-filter="rejected"
+                                    >
+                                        見送り<span
+                                            class="p-admin__count"
+                                            data-admin-count="rejected"
+                                            >0</span
+                                        >
+                                    </button>
+                                </div>
+                                <button class="p-admin__logout" type="button" data-admin-logout>
+                                    出る
+                                </button>
                             </div>
-                            <button class="c-button" type="submit" data-admin-login-submit>
-                                入る
-                            </button>
-                        </form>
-                        <p
-                            class="p-admin__message"
-                            role="status"
-                            data-admin-login-message
-                            hidden
-                        ></p>
-                    </section>
 
-                    <!-- 入ったあと -->
-                    <section class="p-admin__panel" data-admin-panel hidden>
-                        <div class="p-admin__toolbar">
-                            <div class="p-admin__filters" role="group" aria-label="表示するもの">
-                                <button
-                                    class="p-admin__filter"
-                                    type="button"
-                                    data-admin-filter="pending"
-                                >
-                                    承認待ち<span class="p-admin__count" data-admin-count="pending"
-                                        >0</span
-                                    >
-                                </button>
-                                <button
-                                    class="p-admin__filter"
-                                    type="button"
-                                    data-admin-filter="published"
-                                >
-                                    公開中<span class="p-admin__count" data-admin-count="published"
-                                        >0</span
-                                    >
-                                </button>
-                                <button
-                                    class="p-admin__filter"
-                                    type="button"
-                                    data-admin-filter="rejected"
-                                >
-                                    見送り<span class="p-admin__count" data-admin-count="rejected"
-                                        >0</span
-                                    >
-                                </button>
-                            </div>
-                            <button class="p-admin__logout" type="button" data-admin-logout>
-                                出る
-                            </button>
-                        </div>
+                            <p class="p-admin__message" role="status" data-admin-message hidden></p>
+                            <div class="p-admin__list" data-admin-list></div>
+                        </section>
 
-                        <p class="p-admin__message" role="status" data-admin-message hidden></p>
-                        <div class="p-admin__list" data-admin-list></div>
-                    </section>
-
-                    <noscript>
-                        <p class="p-admin__hint">この画面は、JavaScript を有効にすると使えます。</p>
-                    </noscript>
+                        <noscript>
+                            <p class="p-admin__hint">
+                                この画面は、JavaScript を有効にすると使えます。
+                            </p>
+                        </noscript>
+                    </div>
                 </div>
             </div>
         </main>

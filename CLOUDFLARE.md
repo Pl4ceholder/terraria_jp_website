@@ -103,6 +103,9 @@ npm run check:free          # 有料の設定が混ざっていないか確か�
 npm run check:events        # 「これからのイベント」の選び方が期待どおりか確かめる
 npm run check:recruit       # 「いま立っている募集」の選び方が期待どおりか確かめる
 npm run check:achievements  # 実績の取り込み方と、自分の実績の引き方が期待どおりか確かめる
+npm run check:requests      # Web からの依頼の受け取り方と期限が期待どおりか確かめる
+npm run check:activities    # 活動の受け取り方と、公開・書き足し・取り下げが期待どおりか確かめる
+npm run check:columns       # コラムの検索とタグの絞り込みが期待どおりか確かめる
 npm run check:mypage        # マイページのログイン（証の署名・期限・合言葉）が期待どおりか確かめる
 npm run deploy              # Cloudflare Workers へ公開する
 ```
@@ -385,6 +388,8 @@ npx wrangler d1 execute terraria-jp --local --command "SELECT id, title, status 
 - **活動ページ（`/activities`）**: 済み。Discord のスレッド風で、書けるのはログインした人だけ。
   書いた時点で公開し、問題があれば `/admin/activities` から取り下げる。本文は Markdown と
   画像に対応（画像は D1 の `images` に置く）。`004_activities.sql` は適用済み
+- **コラムの検索とタグの絞り込み（`/columns`）**: 済み。題名・本文・書いた人・タグから探せ、
+  タグの件数を見ながら絞り込める。検索語とタグは URL に残るので、そのまま共有できる
 - **GitHub Actions**: `origin`（`Pl4ceholder/terraria_jp_website`）は正しいので、あとは
   ワークフローを足すだけ。`develop` への push で `npm run check:free` と `npm run deploy`
   を回す形にする。GitHub の secrets に `CLOUDFLARE_API_TOKEN`（必要なら

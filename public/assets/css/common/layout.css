@@ -91,6 +91,26 @@ x-site-footer {
     width: min(100% - 2rem, var(--content-width-narrow));
 }
 
+/* 運営ページ: 左にメニュー、右に中身 ---------------------------------- */
+.l-admin {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-m);
+    align-items: start;
+    padding-block-end: var(--space-l);
+}
+
+.l-admin__content {
+    min-inline-size: 0;
+}
+
+@media (width >= 900px) {
+    .l-admin {
+        grid-template-columns: 15rem minmax(0, 1fr);
+        gap: var(--space-l);
+    }
+}
+
 /* 狭い画面: ナビを開閉メニューにする ---------------------------------- */
 @media (width <= 640px) {
     .l-header__toggle {

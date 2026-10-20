@@ -202,7 +202,7 @@ export default {
             }
 
             if (path === "/columns" || path === "/columns.html" || path === "/columns/") {
-                return await handleColumnList(env);
+                return await handleColumnList(env, request.url);
             }
 
             const article = path.match(/^\/columns\/([^/]+)\.html$/);

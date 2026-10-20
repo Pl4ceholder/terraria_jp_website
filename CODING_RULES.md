@@ -72,6 +72,7 @@
 ├─ worker/                   動くページと API（Cloudflare Workers）
 │  ├─ index.js               入口（振り分け・マイページ・実績の受け取り）
 │  ├─ columns-api.js         コラムの表示・投稿・画像
+│  ├─ columns-search.js      コラムの検索とタグの絞り込み
 │  ├─ recruit-api.js         募集の受け取りと一覧
 │  ├─ events-api.js          イベントの受け取りと API
 │  ├─ activities-api.js      活動の表示・投稿・取り下げ
@@ -86,7 +87,7 @@
 │  ├─ requests.js            実績・称号の依頼
 │  ├─ admin-achievements.js  実績の管理画面
 │  ├─ admin-activities.js    活動の管理画面
-│  ├─ admin-nav.js           管理画面の共通ナビ
+│  ├─ admin-nav.js           管理画面の共通サイドメニュー
 │  ├─ auth.js                Discord ログイン
 │  ├─ mypage.js              マイページの HTML
 │  ├─ recruit.js             マルチ募集の HTML
@@ -97,7 +98,14 @@
 │  ├─ schema.sql             保存場所の定義
 │  └─ seed.sql               動作確認用の記事
 ├─ scripts/
-│  └─ check-free-plan.mjs    料金が発生する設定が無いか確かめる
+│  ├─ check-free-plan.mjs    料金が発生する設定が無いか確かめる
+│  ├─ check-events.mjs       「これからのイベント」の選び方を確かめる
+│  ├─ check-recruit.mjs      「いま立っている募集」の選び方を確かめる
+│  ├─ check-achievements.mjs 実績の取り込み方と引き方を確かめる
+│  ├─ check-requests.mjs     Web からの依頼の受け取り方と期限を確かめる
+│  ├─ check-activities.mjs   活動の公開・書き足し・取り下げを確かめる
+│  ├─ check-columns.mjs      コラムの検索とタグの絞り込みを確かめる
+│  └─ check-mypage.mjs       マイページのログインを確かめる
 ├─ dev/                      開発用（公開ページではない）
 │  ├─ parts.html             共通パーツのプレビュー
 │  └─ architecture.html      公開のしくみの図解
@@ -314,6 +322,8 @@ chore: Prettier と Stylelint を導入
   届いた値の整え方は `worker/values.js` に置く（同じ道具を書き写さない）
 - コラムの一覧・記事の HTML は `worker/html.js`、マルチ募集の HTML は `worker/recruit.js`、
   Markdown の変換は `worker/markdown.js`
+- コラムの検索語とタグの扱い（URL の整え方・`WHERE` 句・タグの件数）は
+  `worker/columns-search.js` に置く。一覧の見た目は `worker/html.js` に任せる
 - Discord の内容をサイトに出すときは、サイトから Discord を叩かず、bot から
   `POST /api/internal/...` で受け取って D1 に入れる。合言葉は `SYNC_SECRET`（合言葉が
   無ければ 503、違えば 401）。受け取った内容で丸ごと入れ替え、何度届いても同じ結果にする

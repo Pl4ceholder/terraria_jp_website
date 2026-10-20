@@ -70,31 +70,56 @@
     border-color: var(--color-primary);
 }
 
-/* 運営のページの行き来（コラムの承認・活動の承認・実績） ---------------- */
+/* 運営のページのサイドメニュー（コラム・活動・実績） ------------------- */
 
-.c-admin-nav {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-xs);
-    margin-block-end: var(--space-m);
+.c-admin-sidebar {
+    min-inline-size: 0;
+    padding: var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
 }
 
-.c-admin-nav__link {
-    padding: 0.35em 1em;
+.c-admin-sidebar__title {
+    margin-block-end: var(--space-xs);
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+
+.c-admin-sidebar__list {
+    display: grid;
+    gap: var(--space-xs);
+    min-inline-size: 0;
+}
+
+.c-admin-sidebar__link {
+    display: block;
+    padding: 0.45em 0.9em;
     color: var(--color-text-muted);
     font-size: 0.95rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-pill);
+    border: 1px solid transparent;
+    border-radius: var(--radius-s);
 }
 
-.c-admin-nav__link:hover {
+.c-admin-sidebar__link:hover {
     color: var(--color-text);
+    background-color: var(--color-surface-alt);
+}
+
+.c-admin-sidebar__link[aria-current="page"] {
+    color: var(--color-text);
+    background-color: var(--color-surface-alt);
     border-color: var(--color-primary);
 }
 
-.c-admin-nav__link[aria-current="page"] {
-    color: var(--color-text);
-    border-color: var(--color-primary);
+/* 広い画面では、左に固定する */
+@media (width >= 900px) {
+    .c-admin-sidebar {
+        position: sticky;
+        inset-block-start: calc(var(--header-height) + var(--space-m));
+    }
 }
 
 /* 活動の 1 件（Discord の書き込み風） ---------------------------------- */
