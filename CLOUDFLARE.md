@@ -30,6 +30,7 @@ flowchart TD
         T4["logins<br />ログイン失敗の回数"]
         T5["recruitments / events / member_achievements<br />Discord からの写し"]
         T6["sync_state<br />最後に届いた時刻"]
+        T7["activities / activity_posts<br />活動（Discord のスレッド風）"]
     end
 ```
 
@@ -37,15 +38,17 @@ flowchart TD
 公開サイトには出ません。ファイルをブラウザで直接開いてください（`dev/parts.html` と同じく、
 CSS と共通パーツは相対パスで読み込むので、そのまま動きます）。
 
-| 場所                   | URL                                                 |
-| ---------------------- | --------------------------------------------------- |
-| サイト                 | https://terraria-jp.terraria-jp-website.workers.dev |
-| コラムの投稿           | `/post`                                             |
-| コラムの一覧           | `/columns`                                          |
-| コラムの承認（運営用） | `/admin/columns`                                    |
-| マルチ募集の一覧       | `/recruit`                                          |
-| お知らせ               | `/news`                                             |
-| マイページ（実績）     | `/mypage`（Discord でログインした人だけ）           |
+| 場所                         | URL                                                 |
+| ---------------------------- | --------------------------------------------------- |
+| サイト                       | https://terraria-jp.terraria-jp-website.workers.dev |
+| コラムの投稿                 | `/post`                                             |
+| コラムの一覧                 | `/columns`                                          |
+| コラムの承認（運営用）       | `/admin/columns`                                    |
+| マルチ募集の一覧             | `/recruit`                                          |
+| お知らせ                     | `/news`                                             |
+| 活動（Discord のスレッド風） | `/activities`（書くには Discord でログイン）        |
+| 活動の承認（運営用）         | `/admin/activities`                                 |
+| マイページ（実績）           | `/mypage`（Discord でログインした人だけ）           |
 
 記事は「承認待ち」で保存され、運営が承認したものだけが一覧に並びます。
 投稿にアカウントは要りません（誰でも投稿できます）。
@@ -242,11 +245,14 @@ npx wrangler d1 execute terraria-jp --remote --file=worker/migrations/002_achiev
 
 npx wrangler d1 execute terraria-jp --local  --file=worker/migrations/003_achievement_web.sql
 npx wrangler d1 execute terraria-jp --remote --file=worker/migrations/003_achievement_web.sql
+
+npx wrangler d1 execute terraria-jp --local  --file=worker/migrations/004_activities.sql
+npx wrangler d1 execute terraria-jp --remote --file=worker/migrations/004_activities.sql
 ```
 
 増える列には既定値が入るので、すでに入っているデータは消えません。同じファイルをもう一度
-流すと「列がもうある」でエラーになります。`002` は表を足すだけなので 2 回流しても何も
-起きませんが、`003` は列を足すので 1 回だけ流してください（2 回目はエラーになります）。
+流すと「列がもうある」でエラーになります。`002` と `004` は表を足すだけなので 2 回流しても
+何も起きませんが、`003` は列を足すので 1 回だけ流してください（2 回目はエラーになります）。
 
 ### ローカルで試す
 
@@ -311,6 +317,27 @@ npx wrangler d1 execute terraria-jp --local --command "SELECT id, title, status 
   着けているかは表示だけします）
 - 反映待ちの間はボタンを押せません（同じ依頼が二重に溜まらないようにするため）
 
+### 活動の承認（`/admin/activities`）
+
+合言葉はコラムの承認と同じです（まだなら `/admin/columns` で入っておく）。
+
+1. `/admin/activities` を開く
+2. 「承認待ちの活動」と「承認待ちの書き込み」を見る（タイトルを押すと、本文まで読めます）
+3. それぞれ「公開する」か「見送る」を押す
+4. 「公開中の活動」からは「取り下げる」で一覧から下げられます（あとで公開し直せます）
+
+| ボタン     | 動き                                         |
+| ---------- | -------------------------------------------- |
+| 公開する   | 活動ページ（`/activities`）に並ぶ            |
+| 見送る     | 公開しない（記録は残る。あとから公開できる） |
+| 取り下げる | 公開中のものを、いったん一覧から下げる       |
+
+- 書けるのは Discord でログインした人だけです。書いた人の名前とアイコンが付きます
+- 書き足せるのは、その活動を立てた本人だけです。書き足したぶんも承認してから出ます
+- 承認前に読めるのは、立てた本人と運営（合言葉で入った人）だけです
+- 本文は書き換えられません。直してもらうときは、見送って本人に書き直してもらいます
+- 同じ人が立てられるのは 1 時間に 5 本、書き込めるのは 1 時間に 30 件までです（いたずら対策）
+
 ## 6. つまずいたとき
 
 | 症状                                                       | 原因と対処                                                                                                             |
@@ -338,6 +365,10 @@ npx wrangler d1 execute terraria-jp --local --command "SELECT id, title, status 
 | 「時間がかかりすぎたため、取り消しました」と出る           | 依頼を置いてから 10 分たった。もう一度押す（bot が動いていれば 30 秒で終わる）                                         |
 | 「Bot の権限が足りません」と出る                           | bot のロールを、実績のロールより上に置く。Discord のサーバー設定 → ロール                                              |
 | 管理画面の「相手」に、その人が出てこない                   | 一度も実績を持ったことがない人は出ない。Discord の ID を入れて開く                                                     |
+| 活動を立てたのに、一覧に出ない                             | 承認待ち。`/admin/activities` で公開する（本人には、その間も見えている）                                               |
+| 活動に書き足したのに、出ない                               | 書き足したぶんも承認待ち。`/admin/activities` で公開する                                                               |
+| 活動のページが 404 になる                                  | 見送り・取り下げになっているか、URL が違う。本人と運営には見える                                                       |
+| 「1 時間に 5 本までです」と出る                            | 活動を立てる数の上限（いたずら対策）。1 時間待つ                                                                       |
 
 ## 7. これからやること
 
@@ -348,6 +379,8 @@ npx wrangler d1 execute terraria-jp --local --command "SELECT id, title, status 
     - 称号の着脱（マイページ）と、実績の付与／剥奪（管理画面）…… 済み。サイト側を先に更新してから、
       bot を更新します（古い bot のままだと「反映中」で止まります）
     - どれも、`SYNC_SECRET` をサイトと bot の両方に同じ文字列で登録しないと動きません
+- **活動ページ（`/activities`）**: 済み。Discord のスレッド風で、書けるのはログインした人だけ。
+  承認は `/admin/activities`。本番に出す前に `004_activities.sql` を流す
 - **GitHub Actions**: `origin`（`Pl4ceholder/terraria_jp_website`）は正しいので、あとは
   ワークフローを足すだけ。`develop` への push で `npm run check:free` と `npm run deploy`
   を回す形にする。GitHub の secrets に `CLOUDFLARE_API_TOKEN`（必要なら

@@ -1,0 +1,91 @@
+/* ==========================================================================
+   activities.css — p- : 活動の一覧（/activities）と、活動を書くページ専用
+   Discord のチャンネルを眺めるように、活動が新しい順に並ぶ。
+   1 件ずつの見た目は c-activity（common/components.css）にある。
+   ========================================================================== */
+
+.p-activities {
+    margin-block-end: var(--space-l);
+    border-block-start: 1px solid var(--color-border);
+}
+
+.p-activities__item {
+    border-block-end: 1px solid var(--color-border);
+}
+
+.p-activities__empty {
+    margin-block-end: var(--space-l);
+    padding-block: var(--space-m);
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
+/* 書くページ・ログインの案内 ------------------------------------------ */
+
+.p-activities__login,
+.p-activities__form {
+    display: grid;
+    gap: var(--space-s);
+    margin-block-end: var(--space-l);
+    padding: var(--space-m);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.p-activities__login-text {
+    color: var(--color-text-muted);
+}
+
+.p-activities__field {
+    display: grid;
+    gap: var(--space-xs);
+}
+
+.p-activities__label {
+    font-weight: 700;
+}
+
+.p-activities__hint {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.p-activities__input,
+.p-activities__textarea {
+    width: 100%;
+    padding: var(--space-xs) var(--space-s);
+    color: var(--color-text);
+    background-color: var(--color-surface-alt);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-s);
+}
+
+.p-activities__textarea {
+    min-height: 12rem;
+    line-height: 1.8;
+    resize: vertical;
+}
+
+.p-activities__input:focus-visible,
+.p-activities__textarea:focus-visible {
+    border-color: var(--color-primary);
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+}
+
+.p-activities__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-s);
+    align-items: center;
+}
+
+/* 入力の間違いは、送信ボタンの上に出す */
+.p-activities__error {
+    margin-block-end: var(--space-s);
+    padding: var(--space-s);
+    color: var(--color-danger);
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius-s);
+}

@@ -220,6 +220,65 @@ CREATE INDEX IF NOT EXISTS idx_achievement_requests_status
 CREATE INDEX IF NOT EXISTS idx_achievement_requests_user
     ON achievement_requests (user_id, id DESC);
 
+-- 活動（Discord のスレッド風のページ）1 本。
+--
+-- 最初の書き込みは、この行に持つ。あとから書き足したものは activity_posts に入れる。
+-- 書けるのは Discord でログインした人だけ。公開は運営が承認したものだけ。
+CREATE TABLE IF NOT EXISTS activities (
+    -- URL に使う短い ID（/activities/<id>）
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    -- 最初の書き込み。書かれたままの文章（Markdown）と、表示用の HTML
+    body_md TEXT NOT NULL,
+    body_html TEXT NOT NULL,
+    -- 書いた人（Discord のユーザー ID・表示名・アイコン）
+    author_id TEXT NOT NULL,
+    author_name TEXT NOT NULL DEFAULT '',
+    author_icon TEXT NOT NULL DEFAULT '',
+    -- pending（承認待ち） / published（公開） / rejected（見送り）
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT NOT NULL,
+    -- 公開した日時。承認までは NULL。
+    published_at TEXT,
+    -- 最後に書き込みがあった時刻。一覧はこれの新しい順に並べる
+    updated_at TEXT NOT NULL,
+    -- 公開された書き込みの数（最初の書き込みを含む）
+    post_count INTEGER NOT NULL DEFAULT 0,
+    -- 投稿者の IP を、サイトごとの鍵で変換したもの（そのままは保存しない）
+    ip_hash TEXT NOT NULL DEFAULT ''
+);
+
+-- 一覧は「公開されたものを、最後の書き込みが新しい順」で引く
+CREATE INDEX IF NOT EXISTS idx_activities_published
+    ON activities (status, updated_at DESC);
+
+-- 同じ人から続けて立てられていないかを見るため
+CREATE INDEX IF NOT EXISTS idx_activities_author
+    ON activities (author_id, created_at);
+
+-- 活動に書き足したもの（2 通目以降）。
+CREATE TABLE IF NOT EXISTS activity_posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    activity_id TEXT NOT NULL,
+    body_md TEXT NOT NULL,
+    body_html TEXT NOT NULL,
+    author_id TEXT NOT NULL,
+    author_name TEXT NOT NULL DEFAULT '',
+    author_icon TEXT NOT NULL DEFAULT '',
+    -- pending（承認待ち） / published（公開） / rejected（見送り）
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT NOT NULL,
+    published_at TEXT
+);
+
+-- 活動のページは「その活動の、公開された書き込みを古い順」で引く
+CREATE INDEX IF NOT EXISTS idx_activity_posts_activity
+    ON activity_posts (activity_id, status, id);
+
+-- 同じ人からの書き込みが続いていないかを見るため
+CREATE INDEX IF NOT EXISTS idx_activity_posts_author
+    ON activity_posts (author_id, created_at);
+
 -- 同期の状態を持つ小さな置き場。
 -- 募集が 1 件も無いときでも「最後にいつ届いたか」を出せるようにする。
 CREATE TABLE IF NOT EXISTS sync_state (

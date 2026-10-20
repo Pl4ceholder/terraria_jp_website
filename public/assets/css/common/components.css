@@ -56,6 +56,150 @@
     transform: none;
 }
 
+/* 控えめなボタン（やめる・見るだけ、など）。主な操作の隣に置く */
+.c-button--ghost {
+    color: var(--color-text);
+    background-color: transparent;
+    border: 1px solid var(--color-border);
+    box-shadow: none;
+}
+
+.c-button--ghost:hover {
+    color: var(--color-text);
+    background-color: var(--color-surface-alt);
+    border-color: var(--color-primary);
+}
+
+/* 運営のページの行き来（コラムの承認・活動の承認・実績） ---------------- */
+
+.c-admin-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-block-end: var(--space-m);
+}
+
+.c-admin-nav__link {
+    padding: 0.35em 1em;
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill);
+}
+
+.c-admin-nav__link:hover {
+    color: var(--color-text);
+    border-color: var(--color-primary);
+}
+
+.c-admin-nav__link[aria-current="page"] {
+    color: var(--color-text);
+    border-color: var(--color-primary);
+}
+
+/* 活動の 1 件（Discord の書き込み風） ---------------------------------- */
+
+/* 一覧（/activities）と、活動のページ（/activities/<id>）の両方で使う */
+
+.c-activity {
+    display: flex;
+    gap: var(--space-s);
+    align-items: flex-start;
+    padding: var(--space-s);
+    border-radius: var(--radius);
+}
+
+/* 一覧では、この箱ごとリンクにする */
+.c-activity--link {
+    color: inherit;
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+}
+
+.c-activity--link:hover {
+    background-color: var(--color-surface-alt);
+}
+
+.c-activity__avatar {
+    flex: none;
+    width: 2.5rem;
+    height: 2.5rem;
+    object-fit: cover;
+    background-color: var(--color-surface-alt);
+    border-radius: var(--radius-pill);
+}
+
+/* アイコンを設定していない人。名前の 1 文字目を丸の中に置く */
+.c-activity__avatar--blank {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    font-weight: 700;
+}
+
+/* 長い URL などで、横に広がらないようにする */
+.c-activity__main {
+    min-width: 0;
+    flex: 1;
+}
+
+.c-activity__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    align-items: baseline;
+    margin-block-end: var(--space-xs);
+}
+
+.c-activity__author {
+    font-weight: 700;
+}
+
+.c-activity__time {
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+}
+
+/* 「開始」「承認待ち」などの小さな札 */
+.c-activity__badge {
+    padding: 0.1em 0.6em;
+    color: var(--color-on-primary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    background-color: var(--color-accent);
+    border-radius: var(--radius-pill);
+}
+
+.c-activity__title {
+    font-size: 1.15rem;
+}
+
+.c-activity__excerpt {
+    margin-block-start: var(--space-xs);
+    color: var(--color-text-muted);
+}
+
+.c-activity__meta {
+    margin-block-start: var(--space-xs);
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+}
+
+.c-activity__text {
+    overflow-wrap: anywhere;
+}
+
+/* 1 つの書き込みの中では、読み物としての下余白（記事の終わり）は要らない */
+.c-prose.c-activity__text {
+    padding-block-end: 0;
+}
+
+/* 承認待ちの書き込みは、まだ出ていないことが分かるように薄くする */
+.c-activity--pending .c-activity__text {
+    opacity: 0.75;
+}
+
 /* 下層ページの導入（見出し・リード・説明・ボタン） -------------------- */
 .c-page-header {
     padding-block: var(--space-l) var(--space-m);

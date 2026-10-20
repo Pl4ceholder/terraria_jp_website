@@ -22,6 +22,11 @@ const NAV_ITEMS = [
         match: (path) => path.includes("/columns/"),
     },
     {
+        label: "活動",
+        href: "./activities",
+        match: (path) => path.includes("/activities"),
+    },
+    {
         label: "マルチ募集",
         href: "./recruit.html",
         match: (path) => path.includes("/recruit"),

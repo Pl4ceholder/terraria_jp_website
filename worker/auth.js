@@ -160,12 +160,57 @@ export const issueUserSession = async (
     return `${expires}.${payload}.${await signUser(env, `${expires}.${payload}`)}`;
 };
 
+/**
+ * ログインしたあとの行き先として使ってよいか（このサイトの中の道だけ）。
+ *
+ * 「//example.com」のような、よそのサイトへ飛ばす書き方（open redirect）は通さない。
+ * 使えないときは空を返す（呼んだ側はマイページへ戻す）。
+ */
+export const safeNext = (value) => {
+    const next = String(value ?? "");
+    if (!next.startsWith("/") || next.startsWith("//")) return "";
+    if (next.length > 200) return "";
+    // 改行や「\」が混ざったものは、場所として使わない（ヘッダに乗せるため）
+    if (/[\u0000-\u001f\\]/.test(next)) return "";
+
+    try {
+        // 「/activities/new」のような、このサイトの中の道だけを通す
+        return new URL(next, "https://example.invalid").origin === "https://example.invalid"
+            ? next
+            : "";
+    } catch {
+        return "";
+    }
+};
+
+/** 合言葉（state）のクッキーに入れる値。戻り先があるときだけ、あとに付ける */
+export const buildStateValue = (state, next = "") => {
+    const safe = safeNext(next);
+
+    return safe ? `${state}.${toBase64Url(safe)}` : state;
+};
+
+/** クッキーから、合言葉と戻り先を読む。読めない戻り先は空にする */
+export const readStateValue = (request) => {
+    const [state, encoded = ""] = readCookie(request, STATE_COOKIE).split(".");
+    if (!encoded) return { state, next: "" };
+
+    try {
+        return { state, next: safeNext(fromBase64Url(encoded)) };
+    } catch {
+        return { state, next: "" };
+    }
+};
+
 /** 戻ってきた合言葉（state）が、こちらで作ったものか。他所から押し込まれたものは断る */
 export const isSameState = (request, params) => {
-    const cookie = readCookie(request, STATE_COOKIE);
+    const { state } = readStateValue(request);
 
-    return Boolean(cookie) && isSame(params.get("state") ?? "", cookie);
+    return Boolean(state) && isSame(params.get("state") ?? "", state);
 };
+
+/** ログインし終わったあとの行き先。指定が無ければマイページ */
+export const nextAfterLogin = (request) => readStateValue(request).next || "/mypage";
 
 /** 入っている証が本物で、まだ切れていないか。切れていたら null */
 export const readUserSession = async (request, env) => {

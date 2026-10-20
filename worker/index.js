@@ -22,6 +22,13 @@
 //   POST /api/internal/requests/<id>  Discord の bot が、依頼の結果を書き戻す
 //   GET  /mypage /mypage.html   マイページ（Discord でログインした人だけ）
 //   POST /mypage/title          称号の着脱の依頼を置く（反映するのは bot）
+//   GET  /activities            活動の一覧（Discord のチャンネル風）
+//   POST /activities            活動を立てる（Discord でログインした人だけ・承認待ち）
+//   GET  /activities/<id>       活動 1 本（Discord のスレッド風）
+//   POST /activities/<id>/posts 活動に書き足す（立てた本人だけ・承認待ち）
+//   GET  /activities/new        活動を書くページ
+//   GET  /admin/activities      活動の承認（合言葉で入った人だけ）
+//   POST /admin/activities      公開・見送り・取り下げ
 //   GET  /admin/achievements    実績の付与・剥奪（合言葉で入った人だけ）
 //   POST /admin/achievements    付与・剥奪の依頼を置く（反映するのは bot）
 //   GET  /auth/discord          Discord の認証画面へ送る
@@ -58,9 +65,49 @@ import {
     toResult,
 } from "./requests.js";
 import { renderAdminAchievements } from "./admin-achievements.js";
+import { renderAdminActivities } from "./admin-activities.js";
+import {
+    ACTIVITY_INSERT_SQL,
+    ACTIVITY_LIST_MAX,
+    ACTIVITY_LIST_SQL,
+    ACTIVITY_ONE_SQL,
+    ACTIVITY_PENDING_POSTS_SQL,
+    ACTIVITY_POSTS_MAX,
+    ACTIVITY_POSTS_PER_HOUR,
+    ACTIVITY_POSTS_SQL,
+    ACTIVITY_POST_COUNT_SQL,
+    ACTIVITY_POST_INSERT_SQL,
+    ACTIVITY_POST_ONE_SQL,
+    ACTIVITY_POST_PUBLISH_SQL,
+    ACTIVITY_POST_REJECT_SQL,
+    ACTIVITY_PUBLISH_SQL,
+    ACTIVITY_RECENT_POSTS_SQL,
+    ACTIVITY_RECENT_THREADS_SQL,
+    ACTIVITY_REFRESH_SQL,
+    ACTIVITY_REJECT_SQL,
+    ACTIVITY_THREADS_PER_HOUR,
+    ADMIN_ACTIVITY_LIST_MAX,
+    ADMIN_PENDING_POSTS_SQL,
+    ADMIN_PENDING_THREADS_SQL,
+    ADMIN_RECENT_THREADS_SQL,
+    canSee,
+    parsePost,
+    parseThread,
+    toPost,
+    toThread,
+    toThreadCard,
+} from "./activities.js";
+import {
+    renderActivity,
+    renderActivityForm,
+    renderActivityList,
+    renderActivityLogin,
+    renderActivityMissing,
+} from "./activity.js";
 import {
     buildAuthorizeUrl,
     buildStateCookie,
+    buildStateValue,
     buildUserCookie,
     clearStateCookie,
     clearUserCookie,
@@ -71,6 +118,7 @@ import {
     isSameState,
     issueUserSession,
     makeState,
+    nextAfterLogin,
     readUserSession,
     redirectUriOf,
 } from "./auth.js";
@@ -193,6 +241,24 @@ export default {
             if (path === "/mypage/title") return await handleTitleRequest(request, env);
 
             if (path === "/admin/achievements") return await handleAdminAchievements(request, env);
+            if (path === "/admin/activities") return await handleAdminActivities(request, env);
+
+            // 活動（Discord のスレッド風）。書けるのは Discord でログインした人だけ
+            if (path === "/activities" || path === "/activities.html" || path === "/activities/") {
+                return request.method === "POST"
+                    ? await handleActivityCreate(request, env)
+                    : await handleActivityList(request, env);
+            }
+
+            if (path === "/activities/new" || path === "/activities/new/") {
+                return await handleActivityNew(request, env);
+            }
+
+            const activityPost = path.match(/^\/activities\/([A-Za-z0-9-]{4,32})\/posts$/);
+            if (activityPost) return await handleActivityPost(request, env, activityPost[1]);
+
+            const activityPage = path.match(/^\/activities\/([A-Za-z0-9-]{4,32})$/);
+            if (activityPage) return await handleActivityPage(request, env, activityPage[1]);
 
             // お知らせページが取りに来る
             if (path === "/api/events") {
@@ -1011,11 +1077,303 @@ const handleTitleRequest = async (request, env) => {
     return redirectTo("/mypage");
 };
 
+// 活動（Discord のスレッド風） -------------------------------------------------
+
+/** URL に使う短い ID。ぶつかることはまず無いが、起きたら作り直す */
+const newActivityId = () => crypto.randomUUID().replaceAll("-", "").slice(0, 10);
+
+/**
+ * 活動 1 本のページを組み立てる。
+ *
+ * 見せてよくないとき（無い・承認待ちで本人でも運営でもない）は null を返す。
+ * 承認待ちの活動と書き込みは、立てた本人と運営にだけ見せる（承認する前に読めるように）。
+ */
+const buildActivityPage = async (request, env, id, { error = "" } = {}) => {
+    const row = await env.DB.prepare(ACTIVITY_ONE_SQL).bind(id).first();
+    if (!row) return null;
+
+    const [user, admin] = await Promise.all([readUserSession(request, env), isAdmin(request, env)]);
+    const thread = toThread(row);
+    if (!canSee(thread, user) && !admin) return null;
+
+    const showPending = admin || Boolean(user && user.id === thread.authorId);
+    const [posts, pending] = await Promise.all([
+        env.DB.prepare(ACTIVITY_POSTS_SQL).bind(id).all(),
+        showPending
+            ? env.DB.prepare(ACTIVITY_PENDING_POSTS_SQL).bind(id).all()
+            : Promise.resolve({ results: [] }),
+    ]);
+
+    return renderActivity({
+        thread,
+        posts: (posts.results ?? []).map(toPost),
+        pendingPosts: (pending.results ?? []).map(toPost),
+        viewer: user,
+        isAdmin: admin,
+        error,
+        now: Date.now(),
+    });
+};
+
+/** 活動の一覧。公開されたものだけを、最後の書き込みが新しい順に出す */
+const handleActivityList = async (request, env) => {
+    if (request.method !== "GET") return methodNotAllowed("GET, POST");
+
+    const [list, user] = await Promise.all([
+        env.DB.prepare(ACTIVITY_LIST_SQL).bind(ACTIVITY_LIST_MAX).all(),
+        readUserSession(request, env),
+    ]);
+
+    return htmlResponse(
+        renderActivityList({
+            threads: (list.results ?? []).map(toThreadCard),
+            now: Date.now(),
+            loggedIn: Boolean(user),
+        }),
+    );
+};
+
+/** 活動 1 本のページ */
+const handleActivityPage = async (request, env, id) => {
+    if (request.method !== "GET") return methodNotAllowed("GET");
+
+    const html = await buildActivityPage(request, env, id);
+
+    return html ? htmlResponse(html) : htmlResponse(renderActivityMissing(), 404);
+};
+
+/** 活動を書くページ。ログインしていなければ、ログインの入口を出す */
+const handleActivityNew = async (request, env) => {
+    if (request.method !== "GET") return methodNotAllowed("GET");
+
+    const user = await readUserSession(request, env);
+
+    return htmlResponse(user ? renderActivityForm({ user }) : renderActivityLogin());
+};
+
+/**
+ * 活動を立てる。
+ *
+ * 書けるのは Discord でログインした人だけ（誰が書いたかが分かるようにするため）。
+ * 保存は承認待ちで、運営が公開してから一覧に出る。短い間に何本も立てられないよう、
+ * 同じ人から 1 時間に立てられる本数を数えている。
+ */
+const handleActivityCreate = async (request, env) => {
+    if (!isSameOrigin(request)) return forbidden();
+
+    const user = await readUserSession(request, env);
+    if (!user) return redirectTo("/activities/new");
+
+    const form = await readForm(request);
+    if (form.error) return redirectTo("/activities/new");
+
+    const values = {
+        title: String(form.data.get("title") ?? ""),
+        body: String(form.data.get("body") ?? ""),
+    };
+
+    const parsed = parseThread(values);
+    if (parsed.error) {
+        return htmlResponse(renderActivityForm({ user, values, error: parsed.error }), 400);
+    }
+
+    const recent = await env.DB.prepare(ACTIVITY_RECENT_THREADS_SQL)
+        .bind(user.id, new Date(Date.now() - 60 * 60 * 1000).toISOString())
+        .first();
+    if (Number(recent?.count ?? 0) >= ACTIVITY_THREADS_PER_HOUR) {
+        return htmlResponse(
+            renderActivityForm({
+                user,
+                values,
+                error: `活動を立てられるのは 1 時間に ${ACTIVITY_THREADS_PER_HOUR} 本までです。少し待ってから書いてください。`,
+            }),
+            429,
+        );
+    }
+
+    const now = new Date().toISOString();
+    const bodyHtml = renderMarkdown(parsed.data.body);
+    const ipHash = await hashIp(request, env);
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+        const id = newActivityId();
+
+        try {
+            await env.DB.prepare(ACTIVITY_INSERT_SQL)
+                .bind(
+                    id,
+                    parsed.data.title,
+                    parsed.data.body,
+                    bodyHtml,
+                    user.id,
+                    user.name,
+                    user.avatar,
+                    now,
+                    ipHash,
+                )
+                .run();
+
+            return redirectTo(`/activities/${id}`);
+        } catch (error) {
+            // ID がぶつかったときだけ、作り直す
+            if (!String(error).includes("UNIQUE")) throw error;
+        }
+    }
+
+    throw new Error("活動の ID を作れませんでした");
+};
+
+/** 活動に書き足す。書き足せるのは、その活動を立てた本人だけ */
+const handleActivityPost = async (request, env, id) => {
+    if (!isSameOrigin(request)) return forbidden();
+
+    const user = await readUserSession(request, env);
+    if (!user) return redirectTo("/activities/new");
+
+    const row = await env.DB.prepare(ACTIVITY_ONE_SQL).bind(id).first();
+    const thread = row ? toThread(row) : null;
+    if (!thread || !canSee(thread, user) || thread.authorId !== user.id) {
+        return redirectTo("/activities");
+    }
+
+    // 画面に戻して理由を出す（書き足せないまま、黙って戻さない）
+    const pageWith = async (error, status) => {
+        const html = await buildActivityPage(request, env, id, { error });
+
+        return html ? htmlResponse(html, status) : redirectTo(`/activities/${id}`);
+    };
+
+    const form = await readForm(request);
+    if (form.error) {
+        return pageWith("書き込みを読めませんでした。もう一度お試しください。", 400);
+    }
+
+    const parsed = parsePost({ body: form.data.get("body") });
+    if (parsed.error) return pageWith(parsed.error, 400);
+
+    const [count, recent] = await Promise.all([
+        env.DB.prepare(ACTIVITY_POST_COUNT_SQL).bind(id).first(),
+        env.DB.prepare(ACTIVITY_RECENT_POSTS_SQL)
+            .bind(user.id, new Date(Date.now() - 60 * 60 * 1000).toISOString())
+            .first(),
+    ]);
+
+    if (Number(count?.count ?? 0) >= ACTIVITY_POSTS_MAX) {
+        return pageWith(`1 本の活動に置ける書き込みは ${ACTIVITY_POSTS_MAX} 件までです。`, 400);
+    }
+
+    if (Number(recent?.count ?? 0) >= ACTIVITY_POSTS_PER_HOUR) {
+        return pageWith(
+            `書き込めるのは 1 時間に ${ACTIVITY_POSTS_PER_HOUR} 件までです。少し待ってから書いてください。`,
+            429,
+        );
+    }
+
+    await env.DB.prepare(ACTIVITY_POST_INSERT_SQL)
+        .bind(
+            id,
+            parsed.data.body,
+            renderMarkdown(parsed.data.body),
+            user.id,
+            user.name,
+            user.avatar,
+            new Date().toISOString(),
+        )
+        .run();
+
+    return redirectTo(`/activities/${id}#posts`);
+};
+
+/** 承認ページに出す 3 つの一覧を、まとめて引く */
+const adminActivityLists = async (env) => {
+    const [threads, posts, recent] = await Promise.all([
+        env.DB.prepare(ADMIN_PENDING_THREADS_SQL).bind(ADMIN_ACTIVITY_LIST_MAX).all(),
+        env.DB.prepare(ADMIN_PENDING_POSTS_SQL).bind(ADMIN_ACTIVITY_LIST_MAX).all(),
+        env.DB.prepare(ADMIN_RECENT_THREADS_SQL).bind(ADMIN_ACTIVITY_LIST_MAX).all(),
+    ]);
+
+    return {
+        threads: threads.results ?? [],
+        posts: posts.results ?? [],
+        recent: recent.results ?? [],
+    };
+};
+
+/**
+ * 活動の承認。
+ *
+ * できるのは「公開する」「見送る」「取り下げる」だけ（本文は書き換えない）。
+ * 承認・見送りのあとは、その活動の書き込みの数と「最後の書き込み」を数え直す。
+ */
+const handleAdminActivities = async (request, env) => {
+    if (!(await isAdmin(request, env))) return redirectTo("/admin/columns");
+
+    if (request.method === "POST") {
+        if (!isSameOrigin(request)) return forbidden();
+
+        const form = await readForm(request);
+        if (form.error) return redirectTo("/admin/activities");
+
+        const kind = String(form.data.get("kind") ?? "");
+        const action = String(form.data.get("action") ?? "");
+        const id = String(form.data.get("id") ?? "");
+        const validKind =
+            (kind === "thread" && /^[A-Za-z0-9-]{4,32}$/.test(id)) ||
+            (kind === "post" && /^\d+$/.test(id));
+
+        if (!validKind || (action !== "publish" && action !== "reject")) {
+            return htmlResponse(
+                renderAdminActivities({
+                    ...(await adminActivityLists(env)),
+                    error: "送られてきた内容を読めませんでした。",
+                }),
+                400,
+            );
+        }
+
+        const now = new Date().toISOString();
+        let activityId = id;
+
+        if (kind === "thread") {
+            if (action === "publish") {
+                await env.DB.prepare(ACTIVITY_PUBLISH_SQL).bind(id, now).run();
+            } else {
+                await env.DB.prepare(ACTIVITY_REJECT_SQL).bind(id).run();
+            }
+        } else {
+            const post = await env.DB.prepare(ACTIVITY_POST_ONE_SQL).bind(Number(id)).first();
+            if (!post) return redirectTo("/admin/activities");
+
+            activityId = post.activity_id;
+            if (action === "publish") {
+                await env.DB.prepare(ACTIVITY_POST_PUBLISH_SQL).bind(Number(id), now).run();
+            } else {
+                await env.DB.prepare(ACTIVITY_POST_REJECT_SQL).bind(Number(id)).run();
+            }
+        }
+
+        await env.DB.prepare(ACTIVITY_REFRESH_SQL).bind(activityId).run();
+
+        return redirectTo(`/admin/activities?done=${kind}-${action}`);
+    }
+
+    if (request.method !== "GET") return methodNotAllowed("GET, POST");
+
+    return htmlResponse(
+        renderAdminActivities({
+            ...(await adminActivityLists(env)),
+            done: new URL(request.url).searchParams.get("done") ?? "",
+        }),
+    );
+};
+
 /** Discord の認証画面へ送る。合言葉（state）をクッキーに入れて、戻ってきたときに見比べる */
 const handleDiscordAuth = async (request, env) => {
     if (!isConfigured(env)) return authUnavailable();
 
     const state = makeState();
+    // ログインし終わったあとの行き先（/activities/new など）。無ければマイページ
+    const next = new URL(request.url).searchParams.get("next") ?? "";
 
     return redirectTo(
         buildAuthorizeUrl({
@@ -1023,7 +1381,7 @@ const handleDiscordAuth = async (request, env) => {
             redirectUri: redirectUriOf(request),
             state,
         }),
-        [buildStateCookie(state, isSecure(request))],
+        [buildStateCookie(buildStateValue(state, next), isSecure(request))],
     );
 };
 
@@ -1057,7 +1415,7 @@ const handleDiscordCallback = async (request, env) => {
     const found = await fetchUser({ accessToken: token.data.accessToken });
     if (found.error) return authFailed(found.error, 502);
 
-    return redirectTo("/mypage", [
+    return redirectTo(nextAfterLogin(request), [
         buildUserCookie(await issueUserSession(env, found.data), secure),
         clearStateCookie(),
     ]);
