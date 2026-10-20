@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>コラムを書く | Terraria JP</title>
+        <meta
+            name="description"
+            content="Terraria JP のコラムを書くフォームです。書いた内容は運営が確認してから公開されます。"
+        />
+        <link rel="stylesheet" href="assets/css/style.css" />
+    </head>
+
+    <body>
+        <!-- 共通ヘッダ（assets/js/components/site-header.js） -->
+        <x-site-header></x-site-header>
+
+        <main class="l-main">
+            <header class="c-page-header">
+                <div class="l-container">
+                    <p class="c-page-header__lead">Terraria JP のコラム</p>
+                    <h1 class="c-page-header__title">コラムを書く</h1>
+                    <p class="c-page-header__text">
+                        アカウントは要りません。書いた内容はいったん運営が確認してから、コラムの一覧に並びます。
+                    </p>
+                </div>
+            </header>
+
+            <div class="l-container">
+                <form class="p-post" data-post-form novalidate>
+                    <div class="p-post__fields">
+                        <div class="p-post__field">
+                            <label class="p-post__label" for="post-title">タイトル</label>
+                            <input
+                                class="p-post__input"
+                                id="post-title"
+                                type="text"
+                                name="title"
+                                maxlength="120"
+                                required
+                                autocomplete="off"
+                                data-post-title
+                            />
+                        </div>
+
+                        <div class="p-post__field">
+                            <label class="p-post__label" for="post-author">書いた人（任意）</label>
+                            <input
+                                class="p-post__input"
+                                id="post-author"
+                                type="text"
+                                name="author"
+                                maxlength="40"
+                                autocomplete="off"
+                                data-post-author
+                            />
+                            <p class="p-post__hint">
+                                名前を出したくないときは、空のままで大丈夫です。
+                            </p>
+                        </div>
+
+                        <div class="p-post__field">
+                            <label class="p-post__label" for="post-tags">タグ（任意）</label>
+                            <input
+                                class="p-post__input"
+                                id="post-tags"
+                                type="text"
+                                name="tags"
+                                maxlength="100"
+                                autocomplete="off"
+                                data-post-tags
+                            />
+                            <p class="p-post__hint">
+                                「初心者, 建築, ボス」のようにカンマで区切って入力します（10
+                                個まで）。
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="p-post__workspace">
+                        <div class="p-post__writing">
+                            <div class="p-post__field">
+                                <label class="p-post__label" for="post-body">本文</label>
+                                <!--
+                                    改行はそのまま改行として出る。見出しや箇条書きなど、
+                                    もっと凝った書き方は下の案内に書いてある。
+                                -->
+                                <textarea
+                                    class="p-post__textarea"
+                                    id="post-body"
+                                    name="body"
+                                    rows="16"
+                                    required
+                                    data-post-body
+                                ></textarea>
+                                <p class="p-post__hint">
+                                    見出しは <code>## 見出し</code>、太字は
+                                    <code>**太字**</code>、箇条書きは行のはじめに
+                                    <code>- </code> で書けます。空の行をはさむと段落が変わります。
+                                </p>
+                            </div>
+
+                            <div class="p-post__tools">
+                                <!--
+                                    ファイルの入力そのものは見せず、label をボタンに見せる。
+                                    キーボードで選んだときは、下の :focus-visible で線が出る。
+                                -->
+                                <input
+                                    class="p-post__file u-visually-hidden"
+                                    id="post-image"
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/gif,image/webp"
+                                    data-post-image
+                                />
+                                <label class="c-button c-button--small" for="post-image">
+                                    画像を追加
+                                </label>
+                                <span class="p-post__hint">
+                                    本文にカーソルを置いてから選ぶと、その場所に入ります。貼り付け（Ctrl+V）や
+                                    ドラッグ＆ドロップでも入れられます（1MB まで）。
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="p-post__preview">
+                            <p class="p-post__preview-title">下見（公開される見た目と同じです）</p>
+                            <div class="c-prose" data-post-preview></div>
+                        </div>
+                    </div>
+
+                    <div class="p-post__field">
+                        <label class="p-post__label" for="post-slug">URL の名前（任意）</label>
+                        <input
+                            class="p-post__input"
+                            id="post-slug"
+                            type="text"
+                            name="slug"
+                            maxlength="40"
+                            autocomplete="off"
+                            data-post-slug
+                        />
+                        <p class="p-post__hint">
+                            記事の URL
+                            になります（<code>/columns/&lt;ここ&gt;.html</code>）。半角英数字とハイフンだけで入力してください。空のままなら自動で付きます。
+                        </p>
+                    </div>
+
+                    <p class="p-post__message" role="status" data-post-message hidden></p>
+
+                    <div class="p-post__actions">
+                        <button class="c-button" type="submit" data-post-submit>投稿する</button>
+                        <span class="p-post__hint"
+                            >送ったあと、運営が確認してから公開されます。</span
+                        >
+                    </div>
+
+                    <!--
+                        機械が自動で埋める欄。画面には出さない。
+                        埋まっていたら機械とみなして、送信を受け付けない。
+                    -->
+                    <div class="u-visually-hidden" aria-hidden="true">
+                        <label for="post-website">ウェブサイト</label>
+                        <input
+                            id="post-website"
+                            type="text"
+                            name="website"
+                            tabindex="-1"
+                            autocomplete="off"
+                            data-post-website
+                        />
+                    </div>
+                </form>
+
+                <section class="p-post__done" data-post-done hidden>
+                    <h2 class="p-post__done-title">投稿を受け付けました</h2>
+                    <p class="p-post__done-text">
+                        運営が内容を確認してから、コラムの一覧に並びます。ありがとうございました。
+                    </p>
+                    <p class="p-post__done-actions">
+                        <a class="c-button" href="/columns.html">コラムの一覧を見る</a>
+                    </p>
+                </section>
+
+                <noscript>
+                    <p class="p-post__hint">このフォームは、JavaScript を有効にすると使えます。</p>
+                </noscript>
+            </div>
+        </main>
+
+        <!-- 共通フッター（assets/js/components/site-footer.js） -->
+        <x-site-footer></x-site-footer>
+
+        <script src="assets/js/components/site-header.js" defer></script>
+        <script src="assets/js/components/site-footer.js" defer></script>
+        <script src="assets/js/pages/post.js" defer></script>
+    </body>
+</html>

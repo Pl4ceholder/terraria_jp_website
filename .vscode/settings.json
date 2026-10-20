@@ -9,6 +9,8 @@
     },
     "stylelint.validate": ["css"],
     "files.exclude": {
+        ".dev.vars": true,
+        ".wrangler": true,
         ".editorconfig": true,
         ".gitattributes": true,
         ".gitignore": true,
@@ -20,6 +22,8 @@
         "package.json": true
     },
     "search.exclude": {
+        ".dev.vars": true,
+        ".wrangler": true,
         ".editorconfig": true,
         ".gitattributes": true,
         ".gitignore": true,

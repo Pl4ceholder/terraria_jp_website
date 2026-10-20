@@ -2,16 +2,36 @@
     "name": "terraria-jp-website",
     "version": "0.1.0",
     "private": true,
+    "type": "module",
     "description": "Terraria JP 公式サイト",
     "engines": {
         "node": ">=20.19.0"
     },
     "scripts": {
+        "dev": "wrangler dev",
+        "deploy": "wrangler deploy",
+        "check:free": "node scripts/check-free-plan.mjs",
+        "check:events": "node scripts/check-events.mjs",
+        "check:recruit": "node scripts/check-recruit.mjs",
+        "check:achievements": "node scripts/check-achievements.mjs",
+        "check:requests": "node scripts/check-requests.mjs",
+        "check:mypage": "node scripts/check-mypage.mjs",
+        "db:local": "wrangler d1 execute terraria-jp --local --file=worker/schema.sql",
+        "db:local:seed": "wrangler d1 execute terraria-jp --local --file=worker/seed.sql",
+        "db:remote": "wrangler d1 execute terraria-jp --remote --file=worker/schema.sql",
         "format": "prettier --write ."
+    },
+    "dependencies": {
+        "marked": "^18.1.1"
     },
     "devDependencies": {
         "prettier": "^3.9.10",
         "stylelint": "^17.16.0",
-        "stylelint-config-standard": "^40.0.0"
+        "stylelint-config-standard": "^40.0.0",
+        "wrangler": "^4.151.1"
+    },
+    "allowScripts": {
+        "esbuild@0.28.2": true,
+        "workerd@1.20261012.1": true
     }
 }

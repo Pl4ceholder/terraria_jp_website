@@ -1,0 +1,132 @@
+/* ==========================================================================
+   recruit.css — p- : マルチ募集の一覧（/recruit）専用
+   中身は Discord の bot から届いたもの。見出しなどは common の c-page-header を使う。
+   ========================================================================== */
+
+.p-recruit {
+    padding-block-end: var(--space-l);
+}
+
+/* 最終更新の案内。古くなっているかもしれないときは、色を変えて伝える */
+.p-recruit__updated {
+    margin-block-end: var(--space-s);
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.p-recruit__warning {
+    color: var(--color-accent);
+}
+
+/* 何件立っているかの案内 */
+.p-recruit__count {
+    margin-block-end: var(--space-s);
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.p-recruit__empty {
+    padding-block: var(--space-m);
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
+/* カードの並び。広い画面では 2 列にする */
+.p-recruit__list {
+    display: grid;
+    gap: var(--space-s);
+}
+
+@media (width >= 720px) {
+    .p-recruit__list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.p-recruit__item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.p-recruit__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+}
+
+.p-recruit__badge {
+    padding: 0.1em 0.75em;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill);
+}
+
+/* 種類だけは目立たせる（モッドかバニラかが先に知りたい情報なので） */
+.p-recruit__badge--mode {
+    color: var(--color-primary);
+    border-color: var(--color-primary-dark);
+}
+
+.p-recruit__author {
+    display: flex;
+    gap: var(--space-xs);
+    align-items: center;
+}
+
+.p-recruit__icon {
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+}
+
+.p-recruit__author-name {
+    font-weight: 700;
+}
+
+.p-recruit__ago {
+    margin-inline-start: auto;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+}
+
+/* ひとことは、書かれた改行をそのまま活かす */
+.p-recruit__message {
+    white-space: pre-wrap;
+}
+
+.p-recruit__meta {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.25rem var(--space-s);
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+/* SteamID や IP:Port は長いので、はみ出さずに折り返す */
+.p-recruit__connection {
+    overflow-wrap: anywhere;
+}
+
+/* 書き込みの数と、Discord から流れるまでの目安 */
+.p-recruit__life {
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+}
+
+/* 流れる時刻を過ぎている（まだ一覧には出ている） */
+.p-recruit__life--over {
+    color: var(--color-accent);
+}
+
+/* ボタンはカードの下にそろえる */
+.p-recruit__actions {
+    margin-block-start: auto;
+    padding-block-start: var(--space-xs);
+}

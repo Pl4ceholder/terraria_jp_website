@@ -1,0 +1,213 @@
+/* ==========================================================================
+   components.css — c- : ページをまたいで使い回す部品
+   ========================================================================== */
+
+/* 主なボタン。<button> でも <a> でも同じ見た目で使えるようにしている */
+.c-button {
+    display: inline-block;
+    padding: 0.75em 1.75em;
+    color: var(--color-on-primary);
+    font-weight: 700;
+    background-color: var(--color-primary);
+    border: 0;
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition:
+        background-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.c-button:hover {
+    color: var(--color-on-primary);
+    background-color: var(--color-accent);
+    transform: translateY(-2px);
+}
+
+.c-button:active {
+    transform: translateY(0);
+}
+
+/* 小さめ（一覧の中の操作など） */
+.c-button--small {
+    padding: 0.5em 1.25em;
+    font-size: 0.95rem;
+}
+
+/* 取り消せない操作（削除するなど） */
+.c-button--danger {
+    color: var(--color-text);
+    background-color: transparent;
+    border: 1px solid var(--color-danger);
+    box-shadow: none;
+}
+
+.c-button--danger:hover {
+    color: var(--color-on-primary);
+    background-color: var(--color-danger);
+}
+
+/* 押せないとき（送信中など）は、押せないことが見た目で分かるようにする */
+.c-button:disabled {
+    color: var(--color-text-muted);
+    background-color: var(--color-surface-alt);
+    cursor: default;
+    opacity: 0.7;
+    transform: none;
+}
+
+/* 下層ページの導入（見出し・リード・説明・ボタン） -------------------- */
+.c-page-header {
+    padding-block: var(--space-l) var(--space-m);
+    text-align: center;
+}
+
+.c-page-header__lead {
+    margin-block-end: var(--space-xs);
+    color: var(--color-text-muted);
+}
+
+.c-page-header__title {
+    font-size: clamp(1.8rem, 6vw, 3rem);
+}
+
+.c-page-header__text {
+    margin-block-start: var(--space-s);
+    color: var(--color-text-muted);
+}
+
+.c-page-header__actions {
+    margin-block-start: var(--space-s);
+}
+
+/* SNS アイコンのリンク（フッターなどで使う） -------------------------- */
+.c-social {
+    display: flex;
+    gap: var(--space-s);
+    justify-content: center;
+}
+
+.c-social__item {
+    display: flex;
+}
+
+.c-social__link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill);
+    transition:
+        color 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.c-social__link:hover {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.c-social__icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: currentcolor;
+}
+
+/*
+ * 読み物の本文（コラムの記事と、投稿フォームの下見）
+ *
+ * 本文は Markdown から作るので、こちらでクラスを付けられない。
+ * この中だけは子孫セレクタで要素に当てる（CODING_RULES.md 3.3 の例外）。
+ */
+
+.c-prose {
+    padding-block-end: var(--space-l);
+}
+
+/* 要素どうしの縦の空きは、本文全体でこの 1 か所にまとめる */
+.c-prose > * + * {
+    margin-block-start: var(--space-s);
+}
+
+.c-prose h2 {
+    margin-block-start: var(--space-m);
+    padding-block-end: var(--space-xs);
+    font-size: 1.4rem;
+    border-block-end: 1px solid var(--color-border);
+}
+
+.c-prose h3 {
+    margin-block-start: var(--space-m);
+    font-size: 1.15rem;
+}
+
+.c-prose h4 {
+    margin-block-start: var(--space-m);
+}
+
+/* リセットで消えている箇条書きの見た目を戻す */
+.c-prose ul,
+.c-prose ol {
+    padding-inline-start: 1.5em;
+}
+
+.c-prose ul {
+    list-style: disc;
+}
+
+.c-prose ol {
+    list-style: decimal;
+}
+
+.c-prose li + li {
+    margin-block-start: var(--space-xs);
+}
+
+/* 本文中のリンクは下線で見分けられるようにする（色は全体のルールに任せる） */
+.c-prose a {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+.c-prose blockquote {
+    padding-inline-start: var(--space-s);
+    color: var(--color-text-muted);
+    border-inline-start: 3px solid var(--color-border);
+}
+
+.c-prose pre {
+    padding: var(--space-s);
+    overflow-x: auto;
+    background-color: var(--color-surface-alt);
+    border-radius: var(--radius-s);
+}
+
+/* コードブロックの中は、行ごとに背景を塗り直さない（base.css の code を打ち消す） */
+.c-prose pre code {
+    padding: 0;
+    background-color: transparent;
+}
+
+.c-prose table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.c-prose th,
+.c-prose td {
+    padding: var(--space-xs) var(--space-s);
+    text-align: start;
+    border: 1px solid var(--color-border);
+}
+
+.c-prose hr {
+    border: 0;
+    border-block-start: 1px solid var(--color-border);
+}
+
+.c-prose img {
+    border-radius: var(--radius-s);
+}

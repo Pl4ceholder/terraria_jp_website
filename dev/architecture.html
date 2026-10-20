@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="robots" content="noindex" />
+        <title>公開のしくみ 図解（開発用）</title>
+        <link rel="stylesheet" href="../public/assets/css/style.css" />
+        <style>
+            /* ==========================================================
+               開発用の図解。公開サイトには配信しないので、
+               スタイルはこのページの中に書く（d- は開発用の印）。
+               ========================================================== */
+
+            .d-arch {
+                margin: 0 0 var(--space-m);
+            }
+
+            .d-arch figcaption {
+                margin-top: var(--space-s);
+                color: var(--color-text-muted);
+                font-size: 0.9rem;
+            }
+
+            .d-arch code {
+                padding: 0.1em 0.35em;
+                border-radius: var(--radius-s);
+                background: var(--color-surface-alt);
+                color: var(--color-text);
+                font-size: 0.85em;
+            }
+
+            /* 上に並ぶ人（利用者・運営） -------------------------------- */
+
+            .d-arch__actors {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: var(--space-s);
+            }
+
+            .d-arch__actor {
+                flex: 1 1 12rem;
+                max-width: 22rem;
+                padding: var(--space-s);
+                border: 1px solid var(--color-border);
+                border-radius: var(--radius-s);
+                background: var(--color-surface-alt);
+                text-align: center;
+            }
+
+            .d-arch__actor-title {
+                margin: 0;
+                font-weight: 700;
+            }
+
+            .d-arch__actor-note {
+                margin: 0.25rem 0 0;
+                color: var(--color-text-muted);
+                font-size: 0.85rem;
+            }
+
+            /* 矢印 ------------------------------------------------------ */
+
+            .d-arch__arrows {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 0.25rem;
+                padding: var(--space-xs) 0;
+            }
+
+            .d-arch__arrow-label {
+                margin: 0;
+                color: var(--color-text-muted);
+                font-size: 0.85rem;
+            }
+
+            .d-arch__arrow {
+                position: relative;
+                display: block;
+                width: 2px;
+                height: 1.5rem;
+                background: var(--color-border);
+            }
+
+            .d-arch__arrow::after {
+                position: absolute;
+                bottom: -1px;
+                left: 50%;
+                border-top: 8px solid var(--color-border);
+                border-right: 6px solid transparent;
+                border-left: 6px solid transparent;
+                content: "";
+                transform: translateX(-50%);
+            }
+
+            /* 箱 -------------------------------------------------------- */
+
+            .d-arch__box {
+                padding: var(--space-s);
+                border: 1px solid var(--color-border);
+                border-radius: var(--radius-s);
+                background: var(--color-surface);
+            }
+
+            .d-arch__box--main {
+                border-color: var(--color-primary-dark);
+                box-shadow: var(--shadow);
+            }
+
+            .d-arch__box--data {
+                border-color: var(--color-accent);
+            }
+
+            .d-arch__box-title {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 0.5rem;
+                margin: 0 0 var(--space-xs);
+                font-weight: 700;
+            }
+
+            .d-arch__badge {
+                padding: 0.1em 0.75em;
+                border-radius: var(--radius-pill);
+                background: var(--color-primary-dark);
+                color: var(--color-text);
+                font-size: 0.75rem;
+                font-weight: 400;
+            }
+
+            .d-arch__row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: var(--space-s);
+            }
+
+            .d-arch__row > * {
+                flex: 1 1 16rem;
+            }
+
+            .d-arch__box-text {
+                margin: 0;
+                color: var(--color-text-muted);
+                font-size: 0.9rem;
+            }
+
+            .d-arch__tag {
+                display: inline-block;
+                margin: var(--space-xs) 0 0;
+                padding: 0.1em 0.6em;
+                border: 1px solid var(--color-primary-dark);
+                border-radius: var(--radius-pill);
+                color: var(--color-primary);
+                font-size: 0.8rem;
+            }
+
+            .d-arch__list {
+                margin: 0;
+                padding-left: 1.25rem;
+                color: var(--color-text-muted);
+                font-size: 0.9rem;
+            }
+
+            .d-arch__tables {
+                display: flex;
+                flex-wrap: wrap;
+                gap: var(--space-xs);
+            }
+
+            .d-arch__table {
+                flex: 1 1 10rem;
+                margin: 0;
+                padding: var(--space-xs);
+                border: 1px solid var(--color-border);
+                border-radius: var(--radius-s);
+                background: var(--color-surface-alt);
+                font-size: 0.85rem;
+            }
+
+            .d-arch__table strong {
+                display: block;
+                color: var(--color-accent);
+            }
+
+            /* 手順（投稿から公開まで） ---------------------------------- */
+
+            .d-arch__steps {
+                display: flex;
+                flex-wrap: wrap;
+                gap: var(--space-s);
+                margin: 0;
+                padding: 0;
+                list-style: none;
+            }
+
+            .d-arch__step {
+                flex: 1 1 14rem;
+                padding: var(--space-s);
+                border: 1px solid var(--color-border);
+                border-radius: var(--radius-s);
+                background: var(--color-surface);
+            }
+
+            .d-arch__step-number {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 1.9rem;
+                height: 1.9rem;
+                border-radius: 50%;
+                background: var(--color-primary-dark);
+                color: var(--color-text);
+                font-weight: 700;
+            }
+
+            .d-arch__step-title {
+                margin: var(--space-xs) 0 0.25rem;
+                font-weight: 700;
+            }
+
+            .d-arch__step-text {
+                margin: 0;
+                color: var(--color-text-muted);
+                font-size: 0.9rem;
+            }
+
+            /* 料金の境界 ------------------------------------------------ */
+
+            .d-arch__money {
+                display: flex;
+                flex-wrap: wrap;
+                gap: var(--space-s);
+            }
+
+            .d-arch__money-col {
+                flex: 1 1 15rem;
+                padding: var(--space-s);
+                border: 1px solid var(--color-border);
+                border-radius: var(--radius-s);
+                background: var(--color-surface);
+            }
+
+            .d-arch__money-col--ok {
+                border-color: var(--color-primary-dark);
+            }
+
+            .d-arch__money-col--no {
+                border-color: var(--color-danger);
+            }
+
+            .d-arch__money-title {
+                margin: 0 0 var(--space-xs);
+                font-weight: 700;
+            }
+
+            .d-arch__money-col--ok .d-arch__money-title {
+                color: var(--color-primary);
+            }
+
+            .d-arch__money-col--no .d-arch__money-title {
+                color: var(--color-danger);
+            }
+
+            .d-arch__money-col ul {
+                margin: 0;
+                padding-left: 1.25rem;
+                color: var(--color-text-muted);
+                font-size: 0.9rem;
+            }
+
+            /* ページ内の見出し ------------------------------------------ */
+
+            .d-arch__section + .d-arch__section {
+                margin-top: var(--space-l);
+            }
+        </style>
+    </head>
+
+    <body>
+        <x-site-header></x-site-header>
+
+        <main class="l-main">
+            <header class="c-page-header">
+                <div class="l-container">
+                    <p class="c-page-header__lead">開発用</p>
+                    <h1 class="c-page-header__title">公開のしくみ 図解</h1>
+                    <p class="c-page-header__text">
+                        どう動いているかの全体像です。説明や手順の文章は
+                        <code>CLOUDFLARE.md</code> にあります。
+                    </p>
+                </div>
+            </header>
+
+            <div class="l-container">
+                <section class="d-arch__section">
+                    <h2>1. 全体像</h2>
+
+                    <figure class="d-arch">
+                        <div class="d-arch__actors">
+                            <div class="d-arch__actor">
+                                <p class="d-arch__actor-title">利用者・投稿者</p>
+                                <p class="d-arch__actor-note">アカウント不要</p>
+                            </div>
+                            <div class="d-arch__actor">
+                                <p class="d-arch__actor-title">運営</p>
+                                <p class="d-arch__actor-note">合言葉で入る</p>
+                            </div>
+                        </div>
+
+                        <div class="d-arch__arrows">
+                            <p class="d-arch__arrow-label">ページを見る ／ 投稿する ／ 承認する</p>
+                            <span class="d-arch__arrow" aria-hidden="true"></span>
+                        </div>
+
+                        <div class="d-arch__box d-arch__box--main">
+                            <p class="d-arch__box-title">
+                                Cloudflare Workers
+                                <code>terraria-jp</code>
+                                <span class="d-arch__badge">無料枠</span>
+                            </p>
+
+                            <div class="d-arch__row">
+                                <div class="d-arch__box">
+                                    <p class="d-arch__box-title">手書きのページ</p>
+                                    <p class="d-arch__box-text">
+                                        <code>public/</code>
+                                        の中身をそのまま配信する。トップ・お知らせ・
+                                        サーバー紹介・投稿フォーム・承認。
+                                    </p>
+                                    <p class="d-arch__tag">無料・無制限</p>
+                                </div>
+
+                                <div class="d-arch__box">
+                                    <p class="d-arch__box-title">動く部分（API）</p>
+                                    <ul class="d-arch__list">
+                                        <li>一覧 <code>GET /columns</code></li>
+                                        <li>記事 <code>GET /columns/&lt;名前&gt;.html</code></li>
+                                        <li>画像 <code>GET /img/&lt;id&gt;</code></li>
+                                        <li>投稿 <code>POST /api/columns</code></li>
+                                        <li>下見 <code>POST /api/preview</code></li>
+                                        <li>画像 <code>POST /api/images</code></li>
+                                        <li>承認 <code>POST /api/admin/...</code></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-arch__arrows">
+                            <p class="d-arch__arrow-label">読み書きする</p>
+                            <span class="d-arch__arrow" aria-hidden="true"></span>
+                        </div>
+
+                        <div class="d-arch__box d-arch__box--data">
+                            <p class="d-arch__box-title">
+                                Cloudflare D1
+                                <code>terraria-jp</code>
+                                <span class="d-arch__badge">無料枠</span>
+                            </p>
+
+                            <div class="d-arch__tables">
+                                <p class="d-arch__table">
+                                    <strong>columns</strong>記事（本文・状態・投稿者）
+                                </p>
+                                <p class="d-arch__table">
+                                    <strong>images</strong>記事の画像（R2 は使わない）
+                                </p>
+                                <p class="d-arch__table">
+                                    <strong>uploads</strong>画像アップロードの回数
+                                </p>
+                                <p class="d-arch__table">
+                                    <strong>logins</strong>ログイン失敗の回数
+                                </p>
+                            </div>
+                        </div>
+
+                        <figcaption>
+                            記事も画像も D1
+                            に入るため、<strong>記事が増えてもデプロイは起きません</strong>。
+                            デプロイが要るのは、ページ・CSS・JS・Worker
+                            のコードを直したときだけです。
+                        </figcaption>
+                    </figure>
+                </section>
+
+                <section class="d-arch__section">
+                    <h2>2. 投稿から公開まで</h2>
+
+                    <figure class="d-arch">
+                        <ol class="d-arch__steps">
+                            <li class="d-arch__step">
+                                <span class="d-arch__step-number">1</span>
+                                <p class="d-arch__step-title">投稿する</p>
+                                <p class="d-arch__step-text">
+                                    投稿者が <code>/post</code> で書いて送る（アカウント不要）。
+                                </p>
+                            </li>
+                            <li class="d-arch__step">
+                                <span class="d-arch__step-number">2</span>
+                                <p class="d-arch__step-title">保存される</p>
+                                <p class="d-arch__step-text">
+                                    D1
+                                    に「承認待ち」で入る。誰でも投稿できるので、回数に上限がある。
+                                </p>
+                            </li>
+                            <li class="d-arch__step">
+                                <span class="d-arch__step-number">3</span>
+                                <p class="d-arch__step-title">承認する</p>
+                                <p class="d-arch__step-text">
+                                    運営が <code>/admin/columns</code> で読んで、公開するか決める。
+                                </p>
+                            </li>
+                            <li class="d-arch__step">
+                                <span class="d-arch__step-number">4</span>
+                                <p class="d-arch__step-title">公開される</p>
+                                <p class="d-arch__step-text">
+                                    一覧に並ぶ。デプロイは起きない（D1 が書き換わるだけ）。
+                                </p>
+                            </li>
+                        </ol>
+
+                        <figcaption>
+                            見送りにした記事は一覧に出ません。削除すると元に戻せません（確認あり）。
+                        </figcaption>
+                    </figure>
+                </section>
+
+                <section class="d-arch__section">
+                    <h2>3. 料金の境界</h2>
+
+                    <figure class="d-arch">
+                        <div class="d-arch__money">
+                            <div class="d-arch__money-col d-arch__money-col--ok">
+                                <p class="d-arch__money-title">使う（無料枠）</p>
+                                <ul>
+                                    <li>Workers（10 万リクエスト / 日、CPU 10ms / 回）</li>
+                                    <li>
+                                        D1（読み取り 500 万 / 日、書き込み 10 万 / 日、データベース
+                                        1 つ 500MB）
+                                    </li>
+                                    <li>手書きのページと素材（無料・無制限）</li>
+                                </ul>
+                            </div>
+
+                            <div class="d-arch__money-col d-arch__money-col--no">
+                                <p class="d-arch__money-title">使わない（従量課金）</p>
+                                <ul>
+                                    <li>R2（画像は D1 に入れる）</li>
+                                    <li>KV・Queues・Workers AI など</li>
+                                    <li>有料プランへの切り替え</li>
+                                </ul>
+                            </div>
+
+                            <div class="d-arch__money-col">
+                                <p class="d-arch__money-title">上限を超えたら</p>
+                                <ul>
+                                    <li>エラーになるだけ</li>
+                                    <li>請求は発生しない</li>
+                                    <li>
+                                        手前で断る仕組み（画像 1MB・合計 400MB など）も入れてある
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <figcaption>
+                            料金が発生しうる設定が混ざっていないかは
+                            <code>npm run check:free</code> で確かめられます。
+                        </figcaption>
+                    </figure>
+                </section>
+
+                <section class="d-arch__section">
+                    <h2>4. 覚えておくこと</h2>
+                    <ul>
+                        <li>記事を足すのにデプロイは要らない（D1 に入る）</li>
+                        <li>
+                            コードを直したときだけ <code>npm run check:free</code> →
+                            <code>npm run deploy</code>
+                        </li>
+                        <li>
+                            公開は運営が決める。合言葉は
+                            <code>npx wrangler secret put ADMIN_PASSWORD</code> で登録する
+                        </li>
+                        <li>
+                            画像を R2 に移す条件は <code>README.md</code> の料金の節に書いてある
+                        </li>
+                    </ul>
+                </section>
+            </div>
+        </main>
+
+        <x-site-footer></x-site-footer>
+
+        <script src="../public/assets/js/components/site-header.js" defer></script>
+        <script src="../public/assets/js/components/site-footer.js" defer></script>
+    </body>
+</html>

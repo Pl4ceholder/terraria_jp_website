@@ -1,0 +1,117 @@
+/* ==========================================================================
+   news.css — p- : お知らせページ（news.html）専用のスタイル
+   ========================================================================== */
+
+/* ページの導入は共通パーツ c-page-header を使う（components.css） */
+
+/* 記事の並び ---------------------------------------------------------- */
+.p-news-list {
+    padding-block-end: var(--space-l);
+}
+
+/* 1 件分。日付とタイトルをクリックすると本文が開く */
+.p-news-item {
+    border-block-end: 1px solid var(--color-border);
+}
+
+.p-news-item:last-child {
+    border-block-end: 0;
+}
+
+.p-news-item__summary {
+    display: flex;
+    gap: var(--space-s);
+    align-items: baseline;
+    padding-block: var(--space-s);
+    cursor: pointer;
+
+    /* 既定の三角は消して、右端の矢印に置き換える */
+    list-style: none;
+}
+
+.p-news-item__date {
+    flex: none;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.p-news-item__title {
+    font-weight: 700;
+}
+
+.p-news-item__summary:hover {
+    color: var(--color-primary);
+}
+
+.p-news-item__summary::after {
+    margin-inline-start: auto;
+    color: var(--color-text-muted);
+    content: "▾";
+    transition: transform 0.2s ease;
+}
+
+.p-news-item[open] .p-news-item__summary::after {
+    transform: rotate(180deg);
+}
+
+.p-news-item__body {
+    padding-block-end: var(--space-s);
+    color: var(--color-text-muted);
+}
+
+/* これからのイベント（Discord から自動で出る） -------------------------- */
+.p-news-events {
+    padding-block-end: var(--space-m);
+}
+
+.p-news-events__title {
+    font-size: 1.1rem;
+}
+
+.p-news-events__list {
+    display: grid;
+    gap: var(--space-s);
+    margin-block-start: var(--space-s);
+}
+
+/* 1 件分。左の線で「お知らせ本体」と区別する */
+.p-news-events__item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-inline-start: 3px solid var(--color-primary);
+    border-radius: var(--radius);
+}
+
+.p-news-events__when {
+    color: var(--color-primary);
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.p-news-events__name {
+    font-weight: 700;
+}
+
+/* 説明は、書かれた改行をそのまま活かす */
+.p-news-events__description {
+    white-space: pre-wrap;
+}
+
+.p-news-events__location,
+.p-news-events__note {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.p-news-events__note {
+    margin-block-start: var(--space-xs);
+}
+
+.p-news-events__actions {
+    padding-block-start: var(--space-xs);
+}

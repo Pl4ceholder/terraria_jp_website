@@ -1,6 +1,10 @@
 # 依存関係
 node_modules/
 
+# ローカルで動かしたときの Cloudflare の状態
+.wrangler/
+.dev.vars
+
 # OS が作るファイル
 Thumbs.db
 .DS_Store

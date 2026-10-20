@@ -1,0 +1,182 @@
+/* ==========================================================================
+   admin.css — p- : コラムの承認（admin/columns.html）専用
+   ========================================================================== */
+
+.p-admin {
+    padding-block-end: var(--space-l);
+}
+
+.p-admin__hint {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+/* 合言葉を入れる ------------------------------------------------------ */
+
+.p-admin__login {
+    max-width: 28rem;
+    margin-inline: auto;
+    padding: var(--space-m) var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.p-admin__login-form {
+    display: grid;
+    gap: var(--space-s);
+}
+
+.p-admin__field {
+    display: grid;
+    gap: var(--space-xs);
+}
+
+.p-admin__label {
+    font-weight: 700;
+}
+
+.p-admin__input {
+    width: 100%;
+    padding: var(--space-xs) var(--space-s);
+    color: var(--color-text);
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-s);
+}
+
+.p-admin__input:focus-visible {
+    border-color: var(--color-primary);
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+}
+
+/* 案内（読み込み中・間違い・操作の結果）--------------------------------- */
+
+.p-admin__message {
+    color: var(--color-text-muted);
+}
+
+.p-admin__login .p-admin__message {
+    margin-block-start: var(--space-s);
+    font-size: 0.95rem;
+}
+
+.p-admin__message--error {
+    color: var(--color-danger);
+}
+
+.p-admin__message--success {
+    color: var(--color-primary);
+}
+
+/* 切り替えと「出る」--------------------------------------------------- */
+
+/* 入る前と入った後で入れ替える。
+   display を指定すると [hidden]（ブラウザ既定の display: none）が効かなくなるので、
+   隠れている間は display を付けないようにしておく。 */
+.p-admin__panel:not([hidden]) {
+    display: grid;
+    gap: var(--space-s);
+}
+
+.p-admin__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-s);
+    align-items: center;
+    justify-content: space-between;
+    padding-block-end: var(--space-s);
+    border-block-end: 1px solid var(--color-border);
+}
+
+.p-admin__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+}
+
+.p-admin__filter,
+.p-admin__logout {
+    padding: 0.4em 1em;
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+    background-color: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+}
+
+.p-admin__filter:hover,
+.p-admin__filter--active,
+.p-admin__logout:hover {
+    color: var(--color-text);
+    border-color: var(--color-primary);
+}
+
+.p-admin__count {
+    margin-inline-start: 0.5em;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 投稿 1 件ずつ ------------------------------------------------------ */
+
+.p-admin__list {
+    display: grid;
+    gap: var(--space-s);
+}
+
+.p-admin__empty {
+    padding-block: var(--space-m);
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
+.p-admin__item {
+    padding: var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.p-admin__item-title {
+    font-size: 1.1rem;
+}
+
+.p-admin__item-meta {
+    margin-block-start: var(--space-xs);
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.p-admin__details {
+    margin-block-start: var(--space-s);
+}
+
+.p-admin__summary {
+    cursor: pointer;
+}
+
+/* 本文は記事と同じ見た目（c-prose）を使う。
+   カードの中なので、下に空ける余白だけ詰める。 */
+.p-admin__body {
+    margin-block-start: var(--space-s);
+    padding-block-end: 0;
+    padding-inline-start: var(--space-s);
+    border-inline-start: 1px solid var(--color-border);
+}
+
+.p-admin__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    align-items: center;
+    margin-block-start: var(--space-s);
+}
+
+.p-admin__link {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}

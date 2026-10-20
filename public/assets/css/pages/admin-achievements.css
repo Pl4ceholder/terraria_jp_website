@@ -1,0 +1,173 @@
+/* ==========================================================================
+   admin-achievements.css — p- : 実績の付与・剥奪（/admin/achievements）専用
+   運営が、相手を選んで実績を付与・剥奪する。Discord に反映するのは bot。
+   ========================================================================== */
+
+.p-admin-achievements {
+    display: grid;
+    gap: var(--space-s);
+    padding-block-end: var(--space-l);
+}
+
+/* 相手を探す ------------------------------------------------------------ */
+
+.p-admin-achievements__search {
+    display: grid;
+    gap: var(--space-xs);
+    padding: var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.p-admin-achievements__label {
+    font-weight: 700;
+}
+
+.p-admin-achievements__input {
+    width: 100%;
+    padding: var(--space-xs) var(--space-s);
+    color: var(--color-text);
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-s);
+}
+
+.p-admin-achievements__input:focus-visible {
+    border-color: var(--color-primary);
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+}
+
+.p-admin-achievements__hint {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+/* 案内（反映待ち・結果・間違い）----------------------------------------- */
+
+.p-admin-achievements__notice {
+    padding: var(--space-xs) var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-s);
+}
+
+.p-admin-achievements__notice--done {
+    color: var(--color-primary);
+    border-color: var(--color-primary-dark);
+}
+
+.p-admin-achievements__notice--failed {
+    color: var(--color-danger);
+    border-color: var(--color-danger);
+}
+
+.p-admin-achievements__empty {
+    padding-block: var(--space-m);
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
+/* 相手を選ぶ一覧 -------------------------------------------------------- */
+
+.p-admin-achievements__members {
+    display: grid;
+    gap: var(--space-xs);
+}
+
+.p-admin-achievements__member-link {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-xs) var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-s);
+}
+
+.p-admin-achievements__member-link:hover {
+    border-color: var(--color-primary);
+}
+
+.p-admin-achievements__member-name {
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.p-admin-achievements__member-meta {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+/* 選んだ相手 ------------------------------------------------------------ */
+
+.p-admin-achievements__member-card {
+    padding: var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+.p-admin-achievements__member-heading {
+    font-size: 1.2rem;
+}
+
+.p-admin-achievements__member-id,
+.p-admin-achievements__member-title {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.p-admin-achievements__member-back {
+    margin-block-start: var(--space-xs);
+}
+
+.p-admin-achievements__link {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+/* 実績 1 件ずつ（付与・剥奪のボタンつき）------------------------------- */
+
+.p-admin-achievements__rows {
+    display: grid;
+    gap: var(--space-xs);
+}
+
+.p-admin-achievements__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    align-items: center;
+    padding: var(--space-xs) var(--space-s);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-s);
+}
+
+.p-admin-achievements__achievement {
+    font-weight: 700;
+}
+
+.p-admin-achievements__state {
+    padding: 0.1em 0.75em;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill);
+}
+
+.p-admin-achievements__state--worn {
+    color: var(--color-primary);
+    border-color: var(--color-primary-dark);
+}
+
+/* ボタンは、実績の名前の反対側に寄せる */
+.p-admin-achievements__action {
+    margin-inline-start: auto;
+}

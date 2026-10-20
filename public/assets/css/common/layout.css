@@ -1,0 +1,120 @@
+/* ==========================================================================
+   layout.css — l- : ページの骨組み（ヘッダー・メイン・フッター・コンテナ）
+   ========================================================================== */
+
+/* 共通パーツのカスタム要素は既定で inline なので block にする */
+x-site-header,
+x-site-footer {
+    display: block;
+}
+
+.l-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    height: var(--header-height);
+    padding-inline: var(--space-s);
+    background-color: var(--color-header-bg);
+    border-bottom: 1px solid var(--color-border);
+    backdrop-filter: blur(8px);
+}
+
+.l-header__logo {
+    margin-inline-end: auto;
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+/* ナビゲーション ------------------------------------------------------ */
+.l-header__nav {
+    display: flex;
+    align-items: center;
+}
+
+.l-header__nav-list {
+    display: flex;
+    gap: var(--space-m);
+    align-items: center;
+}
+
+.l-header__nav-link {
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+    white-space: nowrap;
+}
+
+.l-header__nav-link:hover,
+.l-header__nav-link[aria-current="page"] {
+    color: var(--color-text);
+}
+
+/* 開閉ボタン（狭い画面でのみ表示） ------------------------------------ */
+.l-header__toggle {
+    display: none;
+    padding: var(--space-xs) var(--space-s);
+    color: var(--color-text);
+    font-size: 0.9rem;
+    background-color: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+}
+
+/* メイン -------------------------------------------------------------- */
+.l-main {
+    flex: 1;
+}
+
+/* フッター ------------------------------------------------------------ */
+.l-footer {
+    padding-block: var(--space-m);
+    text-align: center;
+    border-top: 1px solid var(--color-border);
+}
+
+.l-footer__copyright {
+    margin-block-start: var(--space-s);
+}
+
+/* 中央寄せの共通コンテナ ---------------------------------------------- */
+.l-container {
+    width: min(100% - 2rem, var(--content-width));
+    margin-inline: auto;
+}
+
+/* 読み物向けの狭いコンテナ（お知らせなど） ---------------------------- */
+.l-container--narrow {
+    width: min(100% - 2rem, var(--content-width-narrow));
+}
+
+/* 狭い画面: ナビを開閉メニューにする ---------------------------------- */
+@media (width <= 640px) {
+    .l-header__toggle {
+        display: inline-flex;
+    }
+
+    .l-header__nav {
+        position: absolute;
+        inset-block-start: var(--header-height);
+        inset-inline: 0;
+        display: none;
+        flex-direction: column;
+        padding: var(--space-s);
+        background-color: var(--color-surface);
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .l-header[data-open="true"] .l-header__nav {
+        display: flex;
+    }
+
+    .l-header__nav-list {
+        flex-direction: column;
+        gap: var(--space-s);
+        align-items: stretch;
+    }
+}
